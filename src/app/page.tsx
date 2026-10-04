@@ -1,4 +1,6 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
+import { verifySessionToken, COOKIE_NAME } from "@/lib/jwt";
 import prisma from "@/lib/prisma";
 import PackageCard, { PackageData } from "@/components/PackageCard";
 import {
@@ -95,6 +97,11 @@ async function getFeaturedPackages(): Promise<PackageData[]> {
 
 export default async function HomePage() {
   const packages = await getFeaturedPackages();
+
+  const cookieStore = await cookies();
+  const token = cookieStore.get(COOKIE_NAME)?.value;
+  const user = token ? await verifySessionToken(token) : null;
+  const isCustomer = user?.role === "CUSTOMER";
 
   const destinations = [
     { name: "Labuan Bajo", desc: "Taman Nasional Komodo & Pink Beach", image: "https://images.unsplash.com/photo-1518548419970-58e3b4079ab2?w=600" },
@@ -329,33 +336,35 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* 5. CTA Join as Partner */}
-      <section className="py-14 sm:py-20 bg-gradient-to-r from-emerald-800 to-teal-900 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="max-w-xl text-center md:text-left">
-            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              Apakah Anda Pengelola Travel, Tour Guide, atau Driver Wisata?
-            </h2>
-            <p className="mt-2 text-sm text-emerald-100 leading-relaxed">
-              Bergabunglah ke ekosistem terpadu kami untuk memperluas jangkauan pasar wisatawan dan mengelola penugasan perjalanan secara profesional.
-            </p>
+      {/* 5. CTA Join as Partner — hidden for logged-in customers */}
+      {!isCustomer && (
+        <section className="py-14 sm:py-20 bg-gradient-to-r from-emerald-800 to-teal-900 text-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="max-w-xl text-center md:text-left">
+              <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                Apakah Anda Pengelola Travel, Tour Guide, atau Driver Wisata?
+              </h2>
+              <p className="mt-2 text-sm text-emerald-100 leading-relaxed">
+                Bergabunglah ke ekosistem terpadu kami untuk memperluas jangkauan pasar wisatawan dan mengelola penugasan perjalanan secara profesional.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <Link
+                href="/register?role=TRAVEL"
+                className="px-5 py-3 rounded-xl bg-white text-emerald-800 hover:bg-emerald-50 font-bold text-xs shadow-lg transition-all"
+              >
+                Daftar Sebagai Travel
+              </Link>
+              <Link
+                href="/register?role=GUIDE"
+                className="px-5 py-3 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs border border-emerald-500 transition-all"
+              >
+                Gabung Tour Guide / Driver
+              </Link>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <Link
-              href="/register?role=TRAVEL"
-              className="px-5 py-3 rounded-xl bg-white text-emerald-800 hover:bg-emerald-50 font-bold text-xs shadow-lg transition-all"
-            >
-              Daftar Sebagai Travel
-            </Link>
-            <Link
-              href="/register?role=GUIDE"
-              className="px-5 py-3 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs border border-emerald-500 transition-all"
-            >
-              Gabung Tour Guide / Driver
-            </Link>
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
     </div>
   );
