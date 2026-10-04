@@ -15,11 +15,12 @@
     "@prisma/client": "^6.4.1",
     "bcryptjs": "^3.0.2",
     "clsx": "^2.1.1",
+    "eslint-config-next": "^15.5.27",
     "html2canvas": "^1.4.1",
     "jose": "^6.0.8",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.16.0",
-    "next": "15.2.1",
+    "next": "^15.5.27",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "tailwind-merge": "^3.0.2"
