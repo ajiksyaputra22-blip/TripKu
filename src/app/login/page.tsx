@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Lock, Mail, AlertCircle } from "lucide-react";
 
 const ROLE_REDIRECT: Record<string, string> = {
-  CUSTOMER: "/explore",
+  CUSTOMER: "/",
   TRAVEL: "/travel/dashboard",
   GUIDE: "/guide/dashboard",
   DRIVER: "/driver/dashboard",
