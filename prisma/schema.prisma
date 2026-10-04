@@ -1,0 +1,334 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id            String           @id @default(cuid())
+  name          String
+  email         String           @unique
+  passwordHash  String
+  phone         String?
+  nik           String?
+  role          String           @default("CUSTOMER")
+  status        String           @default("ACTIVE")
+  avatarUrl     String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  assignments   Assignment[]     @relation("WorkerAssignments")
+  bookings      Booking[]
+  reviews       Review[]
+  travelProfile Travel?
+  attendances   TripAttendance[]
+  checkpoints   TripCheckpoint[]
+  tripUpdates   TripUpdate[]
+  workerProfile WorkerProfile?
+  givenReviews  WorkerReview[]   @relation("ReviewerCustomer")
+  workerReviews WorkerReview[]   @relation("ReviewedWorker")
+  notifications Notification[]
+  crewApplications CrewApplication[] @relation("WorkerApplications")
+}
+
+model Travel {
+  id                   String       @id @default(cuid())
+  userId               String       @unique
+  businessName         String
+  description          String?
+  address              String?
+  phone                String?
+  whatsapp             String?
+  logoUrl              String?
+  verificationStatus   String       @default("PENDING")
+  npwpUrl              String?
+  aktaUrl              String?
+  siupUrl              String?      // Surat Izin Usaha Perdagangan (REQ-2.5)
+  bankName             String?      @default("Bank BCA")
+  bankAccount          String?      @default("123-456-7890")
+  bankHolder           String?      @default("PT Wisata Terpadu")
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+  assignments          Assignment[]
+  packages             Package[]
+  reviews              Review[]
+  user                 User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model WorkerProfile {
+  id               String    @id @default(cuid())
+  userId           String    @unique
+  workerType       String
+  licenseNumber    String?
+  experienceYears  Int       @default(1)
+  bio              String?
+  bankName         String?   @default("Bank BCA")
+  bankAccount      String?
+  bankHolder       String?
+  address          String?
+  domicile         String?   // Kota/Kabupaten domisili (REQ-5.1)
+  birthDate        DateTime?
+  ktpImageUrl      String?
+  simImageUrl      String?
+  certificateUrl   String?   // Sertifikat Tour Guide opsional (REQ-2.6)
+  profileCompleted Boolean   @default(false)
+  isAvailable      Boolean   @default(true)
+  rating           Float     @default(5.0)
+  totalWorkDays    Int       @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Package {
+  id              String    @id @default(cuid())
+  travelId        String
+  name            String
+  slug            String    @unique
+  destination     String
+  originCity      String?
+  province        String?   @default("Indonesia")
+  price           Float
+  departureDate   DateTime
+  bookingDeadline DateTime?
+  durationDays    Int       @default(1)
+  vehicle         String    @default("HiAce Luxury / Bus Pariwisata")
+  facilities      String
+  accommodation   String    @default("Hotel Bintang 3/4 atau Resort")
+  capacity        Int
+  quotaLeft       Int
+  description     String
+  coverImage      String
+  gallery         String?
+  checkpointRoute String?
+  dpPercentage    Int       @default(0)
+  category        String    @default("WISATA_ALAM")
+  status          String    @default("PUBLISHED")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  bookings        Booking[]
+  travel          Travel    @relation(fields: [travelId], references: [id], onDelete: Cascade)
+  trips           Trip[]
+  crewApplications CrewApplication[]
+}
+
+model Booking {
+  id               String        @id @default(cuid())
+  bookingCode      String        @unique
+  customerId       String
+  packageId        String
+  bookingDate      DateTime      @default(now())
+  participantCount Int           @default(1)
+  totalPrice       Float
+  dpAmount         Float         @default(0)
+  dpPaid           Boolean       @default(false)
+  notes            String?
+  status           String        @default("WAITING_PAYMENT")
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  customer         User          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  package          Package       @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  participants     Participant[]
+  payments         Payment[]
+  trips            Trip[]
+}
+
+model Participant {
+  id               String    @id @default(cuid())
+  bookingId        String
+  name             String
+  identityNumber   String
+  birthDate        DateTime?
+  emergencyContact String?
+  phone            String?
+  booking          Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id               String   @id @default(cuid())
+  bookingId        String
+  paymentDate      DateTime @default(now())
+  method           String   @default("BANK_TRANSFER")
+  amount           Float
+  paymentType      String   @default("FULL")
+  proofUrl         String?
+  status           String   @default("PENDING")
+  verificationNote String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  booking          Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+}
+
+model Trip {
+  id                      String           @id @default(cuid())
+  packageId               String
+  bookingId               String?
+  scheduleDate            DateTime
+  destination             String
+  vehicle                 String?
+  operationalNotes        String?
+  currentLocation         String?
+  status                  String           @default("SCHEDULED")
+  guideStarted            Boolean          @default(false)
+  driverStarted           Boolean          @default(false)
+  guideStartedAt          DateTime?
+  driverStartedAt         DateTime?
+  departureAttendanceDone Boolean          @default(false)
+  returnAttendanceDone    Boolean          @default(false)
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
+  assignments             Assignment[]
+  reviews                 Review[]
+  booking                 Booking?         @relation(fields: [bookingId], references: [id])
+  package                 Package          @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  attendances             TripAttendance[]
+  checkpoints             TripCheckpoint[]
+  tripRoom                TripRoom?
+  workerReviews           WorkerReview[]
+}
+
+model Assignment {
+  id             String   @id @default(cuid())
+  tripId         String
+  travelId       String
+  workerId       String
+  role           String
+  assignmentDate DateTime @default(now())
+  status         String   @default("PROPOSED")
+  agreement      String?
+  feeAmount      Float    @default(500000)
+  dpFeeAmount    Float    @default(0)
+  dpFeePaid      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  travel         Travel   @relation(fields: [travelId], references: [id], onDelete: Cascade)
+  trip           Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  worker         User     @relation("WorkerAssignments", fields: [workerId], references: [id], onDelete: Cascade)
+  fee            Fee?
+}
+
+model Fee {
+  id                String     @id @default(cuid())
+  assignmentId      String     @unique
+  amount            Float
+  negotiatedAmount   Float?    // Fee setelah negosiasi
+  paymentType       String     @default("FULL") // FULL | DP
+  dpAmount          Float?     // Nominal DP
+  dpProofUrl        String?    // Bukti bayar DP
+  dpPaid            Boolean    @default(false)
+  dpPaidDate        DateTime?
+  remainingAmount   Float?     // Sisa yang harus dibayar
+  remainingProofUrl String?    // Bukti pelunasan
+  paymentStatus     String     @default("UNPAID") // UNPAID | DP_WAITING_CONFIRMATION | DP_PAID | WAITING_CONFIRMATION | PAID
+  proofUrl          String?    // Bukti bayar (bisa full / pelunasan)
+  paymentDate       DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  assignment        Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+}
+
+model TripRoom {
+  id        String       @id @default(cuid())
+  tripId    String       @unique
+  title     String
+  createdAt DateTime     @default(now())
+  trip      Trip         @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  updates   TripUpdate[]
+}
+
+model TripUpdate {
+  id         String   @id @default(cuid())
+  tripRoomId String
+  userId     String
+  content    String
+  category   String   @default("ANNOUNCEMENT")
+  createdAt  DateTime @default(now())
+  tripRoom   TripRoom @relation(fields: [tripRoomId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  tripId     String
+  customerId String
+  travelId   String
+  rating     Int      @default(5)
+  comment    String
+  createdAt  DateTime @default(now())
+  customer   User     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  travel     Travel   @relation(fields: [travelId], references: [id], onDelete: Cascade)
+  trip       Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+}
+
+model WorkerReview {
+  id         String   @id @default(cuid())
+  tripId     String
+  workerId   String
+  customerId String
+  workerRole String
+  rating     Int      @default(5)
+  comment    String?
+  createdAt  DateTime @default(now())
+  customer   User     @relation("ReviewerCustomer", fields: [customerId], references: [id], onDelete: Cascade)
+  trip       Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  worker     User     @relation("ReviewedWorker", fields: [workerId], references: [id], onDelete: Cascade)
+
+  @@unique([tripId, workerId, customerId])
+}
+
+model TripCheckpoint {
+  id         String   @id @default(cuid())
+  tripId     String
+  userId     String
+  location   String
+  note       String?
+  status     String   @default("REACHED")
+  reportedAt DateTime @default(now())
+  trip       Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TripAttendance {
+  id         String   @id @default(cuid())
+  tripId     String
+  customerId String
+  recordedBy String   @default("")
+  type       String
+  isPresent  Boolean  @default(false)
+  note       String?
+  recordedAt DateTime @default(now())
+  customer   User     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  trip       Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@unique([tripId, customerId, type])
+}
+
+model CrewApplication {
+  id        String   @id @default(cuid())
+  packageId String
+  workerId  String
+  role      String   // GUIDE | DRIVER
+  status    String   @default("PENDING") // PENDING | APPROVED | REJECTED
+  message   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  package   Package  @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  worker    User     @relation("WorkerApplications", fields: [workerId], references: [id], onDelete: Cascade)
+
+  @@unique([packageId, workerId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // BOOKING, PAYMENT, ASSIGNMENT, TRIP_UPDATE
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
