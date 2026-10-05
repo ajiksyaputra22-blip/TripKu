@@ -76,21 +76,22 @@ function GuideRegisterForm() {
       return;
     }
 
+    if (!ktpFile) {
+      setError("Foto KTP wajib diupload.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // Upload KTP jika ada
-      let ktpUrl = "";
-      if (ktpFile) {
-        const ktpFd = new FormData();
-        ktpFd.append("file", ktpFile);
-        ktpFd.append("folder", "ktp-guide");
-        const ktpUploadRes = await fetch("/api/upload", { method: "POST", body: ktpFd });
-        const ktpUploadData = await ktpUploadRes.json();
-        if (ktpUploadRes.ok && ktpUploadData.url) {
-          ktpUrl = ktpUploadData.url;
-        }
-      }
+      // Upload KTP (wajib)
+      const ktpFd = new FormData();
+      ktpFd.append("file", ktpFile);
+      ktpFd.append("folder", "ktp-guide");
+      const ktpUploadRes = await fetch("/api/upload", { method: "POST", body: ktpFd });
+      const ktpUploadData = await ktpUploadRes.json();
+      if (!ktpUploadRes.ok) throw new Error(ktpUploadData.error || "Gagal mengupload foto KTP.");
+      const ktpUrl = ktpUploadData.url;
 
       let certUrl = "";
       if (certificateFile) {
@@ -116,7 +117,7 @@ function GuideRegisterForm() {
           phone,
           domicile: region,
           certificateUrl: certUrl || null,
-          ktpImageUrl: ktpUrl || null,
+          ktpImageUrl: ktpUrl,
           birthDate: birthDate || null,
           experienceYears: parseInt(experienceYears) || 1,
           bioDetails,
@@ -221,10 +222,10 @@ function GuideRegisterForm() {
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <label className="block text-xs font-bold text-teal-950 mb-0.5">
-                    Upload Foto KTP (Opsional / Pendukung)
+                    Upload Foto KTP <span className="text-rose-500">*</span>
                   </label>
                   <p className="text-[11px] text-slate-500">
-                    Upload foto KTP sebagai dokumen pendukung identitas Anda.
+                    Foto KTP wajib diupload sebagai dokumen verifikasi identitas.
                   </p>
                 </div>
               </div>

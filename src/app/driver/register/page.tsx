@@ -72,6 +72,10 @@ function DriverRegisterForm() {
       setError("Konfirmasi password tidak cocok.");
       return;
     }
+    if (!ktpFile) {
+      setError("Foto KTP wajib diupload.");
+      return;
+    }
     if (!simFile) {
       setError("File foto SIM wajib diupload.");
       return;
@@ -80,18 +84,14 @@ function DriverRegisterForm() {
     setLoading(true);
 
     try {
-      // Upload KTP jika ada
-      let ktpUrl = "";
-      if (ktpFile) {
-        const ktpFd = new FormData();
-        ktpFd.append("file", ktpFile);
-        ktpFd.append("folder", "ktp-driver");
-        const ktpUploadRes = await fetch("/api/upload", { method: "POST", body: ktpFd });
-        const ktpUploadData = await ktpUploadRes.json();
-        if (ktpUploadRes.ok && ktpUploadData.url) {
-          ktpUrl = ktpUploadData.url;
-        }
-      }
+      // Upload KTP (wajib)
+      const ktpFd = new FormData();
+      ktpFd.append("file", ktpFile);
+      ktpFd.append("folder", "ktp-driver");
+      const ktpUploadRes = await fetch("/api/upload", { method: "POST", body: ktpFd });
+      const ktpUploadData = await ktpUploadRes.json();
+      if (!ktpUploadRes.ok) throw new Error(ktpUploadData.error || "Gagal mengupload foto KTP.");
+      const ktpUrl = ktpUploadData.url;
 
       // Upload SIM
       const formData = new FormData();
@@ -114,7 +114,7 @@ function DriverRegisterForm() {
           phone,
           domicile: domisili,
           simImageUrl: simUrl,
-          ktpImageUrl: ktpUrl || null,
+          ktpImageUrl: ktpUrl,
           birthDate: birthDate || null,
           bioDetails,
           password,
@@ -205,7 +205,7 @@ function DriverRegisterForm() {
 
         <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-start gap-2">
           <Info className="w-4 h-4 shrink-0 mt-0.5" />
-          <span>Pendaftaran ini memerlukan <strong>verifikasi admin</strong> sebelum Anda dapat login. Wajib upload foto SIM.</span>
+          <span>Pendaftaran ini memerlukan <strong>verifikasi admin</strong> sebelum Anda dapat login. Wajib upload foto KTP dan SIM.</span>
         </div>
 
         <form onSubmit={handleRegister} className="space-y-6">
@@ -220,10 +220,10 @@ function DriverRegisterForm() {
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <label className="block text-xs font-bold text-indigo-950 mb-0.5">
-                    Upload Foto KTP (Opsional / Pendukung)
+                    Upload Foto KTP <span className="text-rose-500">*</span>
                   </label>
                   <p className="text-[11px] text-slate-500">
-                    Upload foto KTP sebagai dokumen pendukung verifikasi identitas Anda.
+                    Foto KTP wajib diupload sebagai dokumen verifikasi identitas.
                   </p>
                 </div>
               </div>
