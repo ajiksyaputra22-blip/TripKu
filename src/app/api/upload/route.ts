@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
-import { existsSync } from "fs";
+import { uploadToStorage } from "@/lib/supabase-storage";
 
 export async function POST(request: Request) {
   try {
@@ -28,21 +26,18 @@ export async function POST(request: Request) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Create upload directory if not exists
-    const uploadDir = path.join(process.cwd(), "public", "uploads", folder);
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true });
-    }
-
     // Generate unique filename
     const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-    const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const filepath = path.join(uploadDir, filename);
+    const filename = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
-    await writeFile(filepath, buffer);
+    const result = await uploadToStorage(buffer, "tripku-uploads", filename, file.type);
 
-    const url = `/uploads/${folder}/${filename}`;
-    return NextResponse.json({ success: true, url });
+    if ("error" in result) {
+      console.error("Storage error:", result.error);
+      return NextResponse.json({ error: "Gagal mengunggah file." }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, url: result.url });
   } catch (error) {
     console.error("Upload error:", error);
     return NextResponse.json({ error: "Gagal mengunggah file." }, { status: 500 });

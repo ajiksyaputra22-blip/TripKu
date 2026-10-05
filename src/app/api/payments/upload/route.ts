@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import fs from "fs/promises";
+import { uploadToStorage } from "@/lib/supabase-storage";
 import path from "path";
 
 const MAX_FILE_SIZE = 3 * 1024 * 1024; // 3 MB
@@ -57,15 +57,16 @@ export async function POST(request: Request) {
 
       const rawExt = path.extname(file.name) || ".jpg";
       const ext = [".jpg", ".jpeg", ".png", ".webp"].includes(rawExt.toLowerCase()) ? rawExt.toLowerCase() : ".jpg";
-      const filename = `proof-${bookingId}-${Date.now()}${ext}`;
+      const filename = `proofs/proof-${bookingId}-${Date.now()}${ext}`;
 
-      const uploadDir = path.join(process.cwd(), "public", "uploads", "proofs");
-      await fs.mkdir(uploadDir, { recursive: true });
+      const result = await uploadToStorage(buffer, "tripku-uploads", filename, file.type);
 
-      const filepath = path.join(uploadDir, filename);
-      await fs.writeFile(filepath, buffer);
+      if ("error" in result) {
+        console.error("Storage error:", result.error);
+        return NextResponse.json({ error: "Gagal mengunggah bukti pembayaran." }, { status: 500 });
+      }
 
-      proofUrl = `/uploads/proofs/${filename}`;
+      proofUrl = result.url;
     } else {
       const body = await request.json();
       bookingId = body.bookingId;
