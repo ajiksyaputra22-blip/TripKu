@@ -60,8 +60,14 @@ export default function TravelPackagesPage() {
   const isBookingClosed = (pkg: any) => {
     const now = Date.now();
     if (pkg.status !== "PUBLISHED" && pkg.status !== "INACTIVE") return true;
-    if (pkg.bookingDeadline && new Date(pkg.bookingDeadline).getTime() < now) return true;
-    if (!pkg.bookingDeadline && pkg.departureDate) {
+    if (pkg.bookingDeadline) {
+      const d = new Date(pkg.bookingDeadline);
+      if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0) {
+        d.setUTCHours(23, 59, 59, 999);
+      }
+      return d.getTime() < now;
+    }
+    if (pkg.departureDate) {
       return new Date(pkg.departureDate).getTime() - now <= 1 * 86400000;
     }
     return false;
@@ -460,7 +466,7 @@ export default function TravelPackagesPage() {
                         <div className="flex items-center justify-between">
                           <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-rose-400" /> Batas Pesan:</span>
                           <span className={`font-bold ${isBookingClosed(pkg) ? "text-rose-600" : "text-slate-700"}`}>
-                            {pkg.bookingDeadline ? formatDate(pkg.bookingDeadline) : (pkg.departureDate ? `H-3` : "—")}
+                            {pkg.bookingDeadline ? formatDate(pkg.bookingDeadline) : (pkg.departureDate ? `H-1` : "—")}
                           </span>
                         </div>
                       </div>
@@ -562,7 +568,7 @@ export default function TravelPackagesPage() {
                               </div>
                               <div className={`flex items-center gap-1 text-[11px] ${isBookingClosed(pkg) ? "text-rose-600 font-bold" : "text-slate-500"}`}>
                                 <Clock className="w-3 h-3" />
-                                <span>Batas: {pkg.bookingDeadline ? formatDate(pkg.bookingDeadline) : "H-3"}</span>
+                                <span>Batas: {pkg.bookingDeadline ? formatDate(pkg.bookingDeadline) : "H-1"}</span>
                               </div>
                             </div>
                           </td>

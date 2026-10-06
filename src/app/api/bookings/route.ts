@@ -127,11 +127,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Paket wisata tidak ditemukan." }, { status: 404 });
     }
 
-    // REQ-3.1: Batas waktu pemesanan — gunakan bookingDeadline jika ada, fallback H-3 dari departureDate
+    // REQ-3.1: Batas waktu pemesanan — gunakan bookingDeadline jika ada, fallback H-1 dari departureDate
     const now = new Date();
-    const isExpired = pkg.bookingDeadline
-      ? new Date(pkg.bookingDeadline) <= now
-      : pkg.departureDate && new Date(pkg.departureDate).getTime() - now.getTime() <= 3 * 24 * 60 * 60 * 1000;
+    let isExpired = false;
+    if (pkg.bookingDeadline) {
+      const deadline = new Date(pkg.bookingDeadline);
+      if (deadline.getUTCHours() === 0 && deadline.getUTCMinutes() === 0) {
+        deadline.setUTCHours(23, 59, 59, 999);
+      }
+      isExpired = now.getTime() > deadline.getTime();
+    } else if (pkg.departureDate) {
+      isExpired = new Date(pkg.departureDate).getTime() - now.getTime() <= 1 * 24 * 60 * 60 * 1000;
+    }
 
     if (pkg.status !== "PUBLISHED" || isExpired) {
       if (pkg.status === "PUBLISHED" && isExpired) {

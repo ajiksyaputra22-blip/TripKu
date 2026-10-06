@@ -79,12 +79,19 @@ export async function GET(
       );
     }
 
-    // REQ-3.1: Auto-deactivate if past bookingDeadline (or H-3 fallback)
+    // REQ-3.1: Auto-deactivate if past bookingDeadline (or H-1 fallback)
     const now = new Date();
     let currentStatus = pkg.status;
-    const isExpired = pkg.bookingDeadline
-      ? new Date(pkg.bookingDeadline) <= now
-      : pkg.departureDate && new Date(pkg.departureDate).getTime() - now.getTime() <= 1 * 24 * 60 * 60 * 1000;
+    let isExpired = false;
+    if (pkg.bookingDeadline) {
+      const deadline = new Date(pkg.bookingDeadline);
+      if (deadline.getUTCHours() === 0 && deadline.getUTCMinutes() === 0) {
+        deadline.setUTCHours(23, 59, 59, 999);
+      }
+      isExpired = now.getTime() > deadline.getTime();
+    } else if (pkg.departureDate) {
+      isExpired = new Date(pkg.departureDate).getTime() - now.getTime() <= 1 * 24 * 60 * 60 * 1000;
+    }
 
     if (pkg.status === "PUBLISHED" && isExpired) {
       await prisma.package.update({
@@ -234,7 +241,11 @@ export async function PUT(
         originCity: body.originCity !== undefined ? (body.originCity || null) : existingPackage.originCity,
         price: body.price ? parseFloat(body.price) : existingPackage.price,
         departureDate: body.departureDate ? new Date(body.departureDate) : existingPackage.departureDate,
-        bookingDeadline: body.bookingDeadline !== undefined ? (body.bookingDeadline ? new Date(body.bookingDeadline) : null) : existingPackage.bookingDeadline,
+        bookingDeadline: body.bookingDeadline !== undefined
+          ? (body.bookingDeadline
+              ? new Date(typeof body.bookingDeadline === "string" && !body.bookingDeadline.includes("T") ? `${body.bookingDeadline}T23:59:59.999Z` : body.bookingDeadline)
+              : null)
+          : existingPackage.bookingDeadline,
         durationDays: body.durationDays ? parseInt(body.durationDays) : existingPackage.durationDays,
         vehicle: body.vehicle ?? existingPackage.vehicle,
         facilities: body.facilities ? (typeof body.facilities === "string" ? body.facilities : JSON.stringify(body.facilities)) : existingPackage.facilities,

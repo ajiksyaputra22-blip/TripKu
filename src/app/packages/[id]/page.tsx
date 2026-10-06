@@ -226,7 +226,17 @@ export default async function PackageDetailPage({ params }: PageProps) {
               <div className="mt-3 p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
                 <span className="text-slate-500 font-medium">Jadwal Keberangkatan:</span>
                 <span className="font-bold text-slate-800">
-                  {formatDate(pkg.departureDate)}
+                  {pkg.departureDate ? formatDate(pkg.departureDate) : "—"}
+                </span>
+              </div>
+
+              {/* Booking Deadline */}
+              <div className="mt-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
+                <span className="text-slate-500 font-medium">Batas Pemesanan:</span>
+                <span className="font-bold text-slate-800">
+                  {pkg.bookingDeadline
+                    ? formatDate(pkg.bookingDeadline)
+                    : (pkg.departureDate ? `H-1 (${formatDate(new Date(new Date(pkg.departureDate).getTime() - 1 * 86400000))})` : "—")}
                 </span>
               </div>
 
@@ -258,8 +268,22 @@ export default async function PackageDetailPage({ params }: PageProps) {
             {/* CTA Button */}
             <div className="mt-6">
               {(() => {
-                const isPastH3 = new Date(pkg.departureDate).getTime() - Date.now() <= 3 * 24 * 60 * 60 * 1000;
-                const isInactive = pkg.status !== "PUBLISHED" || isPastH3;
+                const now = new Date();
+                let isPastDeadline = false;
+
+                if (pkg.bookingDeadline) {
+                  const deadline = new Date(pkg.bookingDeadline);
+                  if (deadline.getUTCHours() === 0 && deadline.getUTCMinutes() === 0) {
+                    deadline.setUTCHours(23, 59, 59, 999);
+                  }
+                  isPastDeadline = now.getTime() > deadline.getTime();
+                } else if (pkg.departureDate) {
+                  // Fallback: minimal H-1 sebelum keberangkatan
+                  const dep = new Date(pkg.departureDate).getTime();
+                  isPastDeadline = dep - now.getTime() <= 1 * 24 * 60 * 60 * 1000;
+                }
+
+                const isInactive = pkg.status !== "PUBLISHED" || isPastDeadline;
 
                 if (isInactive) {
                   return (
@@ -267,7 +291,7 @@ export default async function PackageDetailPage({ params }: PageProps) {
                       disabled
                       className="w-full py-3.5 px-4 rounded-xl bg-slate-200 text-slate-500 font-bold text-sm cursor-not-allowed text-center"
                     >
-                      Pemesanan Ditutup (Batas Waktu H-3)
+                      Pemesanan Ditutup
                     </button>
                   );
                 }

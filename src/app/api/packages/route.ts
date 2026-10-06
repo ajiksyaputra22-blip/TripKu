@@ -17,10 +17,10 @@ export async function GET(request: Request) {
     const myOnly = searchParams.get("myOnly") === "true";
     const includeBookings = searchParams.get("includeBookings") === "true";
 
-    // REQ-3.1: Auto-deactivate packages past their bookingDeadline (or H-3 if not set)
+    // REQ-3.1: Auto-deactivate packages past their bookingDeadline (or H-1 if not set)
     const now = new Date();
     try {
-      // Packages with explicit bookingDeadline
+      // Packages with explicit bookingDeadline (deactivate if now has passed the deadline)
       await prisma.package.updateMany({
         where: {
           status: "PUBLISHED",
@@ -289,7 +289,9 @@ export async function POST(request: Request) {
         province: province || "Indonesia",
         price: parseFloat(price),
         departureDate: departureDate ? new Date(departureDate) : new Date(Date.now() + 7 * 86400000),
-        bookingDeadline: bookingDeadline ? new Date(bookingDeadline) : null,
+        bookingDeadline: bookingDeadline
+          ? new Date(bookingDeadline.includes("T") ? bookingDeadline : `${bookingDeadline}T23:59:59.999Z`)
+          : null,
         durationDays: parseInt(durationDays) || 1,
         vehicle: vehicle || "HiAce Commuter / Bus Pariwisata",
         facilities: facilitiesString,
