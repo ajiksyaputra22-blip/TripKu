@@ -132,7 +132,6 @@ export default function WorkerJobVacancies({
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-600 mb-1">
-              <span>Bursa Lowongan Kerja Kru ({role === "GUIDE" ? "Tour Guide" : "Driver"})</span>
             </div>
             <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
               Peluang Penugasan Wisata Terbuka

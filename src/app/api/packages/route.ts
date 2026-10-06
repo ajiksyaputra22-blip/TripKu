@@ -15,6 +15,7 @@ export async function GET(request: Request) {
     const category = searchParams.get("category");
     const status = searchParams.get("status") || "PUBLISHED";
     const myOnly = searchParams.get("myOnly") === "true";
+    const includeBookings = searchParams.get("includeBookings") === "true";
 
     // REQ-3.1: Auto-deactivate packages past their bookingDeadline (or H-3 if not set)
     const now = new Date();
@@ -27,8 +28,8 @@ export async function GET(request: Request) {
         },
         data: { status: "INACTIVE" },
       });
-      // Packages without bookingDeadline: use H-3 from departureDate
-      const cutoffDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+      // Packages without bookingDeadline: use H-1 from departureDate
+      const cutoffDate = new Date(Date.now() + 1 * 24 * 60 * 60 * 1000);
       await prisma.package.updateMany({
         where: {
           status: "PUBLISHED",
@@ -134,6 +135,8 @@ export async function GET(request: Request) {
             status: { not: "CANCELLED" },
           },
           select: {
+            id: true,
+            status: true,
             participantCount: true,
           },
         },
@@ -162,6 +165,10 @@ export async function GET(request: Request) {
         reviewCount,
         totalBookedPax,
         totalBookings: totalBookedPax,
+        // Sertakan data bookings (dengan status) jika diminta, untuk cek pesanan aktif
+        ...(includeBookings && {
+          bookings: bookings.map((b: any) => ({ id: b.id, status: b.status, participantCount: b.participantCount })),
+        }),
       };
     });
 

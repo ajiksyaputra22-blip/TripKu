@@ -62,9 +62,17 @@ export default function TravelPackagesPage() {
     if (pkg.status !== "PUBLISHED" && pkg.status !== "INACTIVE") return true;
     if (pkg.bookingDeadline && new Date(pkg.bookingDeadline).getTime() < now) return true;
     if (!pkg.bookingDeadline && pkg.departureDate) {
-      return new Date(pkg.departureDate).getTime() - now <= 3 * 86400000;
+      return new Date(pkg.departureDate).getTime() - now <= 1 * 86400000;
     }
     return false;
+  };
+
+  // Helper: cek apakah paket punya pesanan yang masih berlangsung
+  const hasActiveBookings = (pkg: any) => {
+    if (!pkg.bookings || !Array.isArray(pkg.bookings)) return false;
+    return pkg.bookings.some((b: any) =>
+      ["CONFIRMED", "PAID", "DP_PAID", "WAITING_PAYMENT", "WAITING_DP_PAYMENT"].includes(b.status)
+    );
   };
 
   // Status badge for package: AKTIF -> NONAKTIF / PEMESANAN DITUTUP -> SELESAI
@@ -96,7 +104,7 @@ export default function TravelPackagesPage() {
   const fetchPackages = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/packages?status=ALL&myOnly=true");
+      const res = await fetch("/api/packages?status=ALL&myOnly=true&includeBookings=true");
       const data = await res.json();
       setPackages(data.packages || []);
     } catch {
@@ -128,15 +136,19 @@ export default function TravelPackagesPage() {
     setDpPercentage("0");
     setCategory("WISATA ALAM");
     setPkgStatus("PUBLISHED");
-    // Default departure: 14 days from now, deadline: H-3
+    // Default departure: 14 days from now, deadline: H-1
     const dep = new Date(Date.now() + 14 * 86400000);
     setDepartureDate(dep.toISOString().substring(0, 10));
-    const dl = new Date(Date.now() + 11 * 86400000);
+    const dl = new Date(Date.now() + 13 * 86400000);
     setBookingDeadline(dl.toISOString().substring(0, 10));
     setModalOpen(true);
   };
 
   const openEditModal = (pkg: any) => {
+    if (hasActiveBookings(pkg)) {
+      toast.warning("Paket ini tidak bisa diedit karena masih ada pesanan yang berlangsung.");
+      return;
+    }
     setEditingPkg(pkg);
     setName(pkg.name);
     setDestination(pkg.destination);
@@ -237,6 +249,11 @@ export default function TravelPackagesPage() {
   };
 
   const handleArchive = async (id: string, name: string) => {
+    const pkg = packages.find((p: any) => p.id === id);
+    if (pkg && hasActiveBookings(pkg)) {
+      toast.warning("Paket ini tidak bisa diarsipkan karena masih ada pesanan yang berlangsung.");
+      return;
+    }
     try {
       const res = await fetch(`/api/packages/${id}`, {
         method: "PATCH",
@@ -247,7 +264,8 @@ export default function TravelPackagesPage() {
         toast.success(`Paket "${name}" berhasil diarsipkan.`);
         fetchPackages();
       } else {
-        toast.error("Gagal mengarsipkan paket.");
+        const err = await res.json();
+        toast.error(err.error || "Gagal mengarsipkan paket.");
       }
     } catch {
       toast.error("Gagal mengarsipkan paket.");
@@ -277,6 +295,11 @@ export default function TravelPackagesPage() {
 
   // Hapus permanen paket
   const handleDelete = async (id: string, name: string) => {
+    const pkg = packages.find((p: any) => p.id === id);
+    if (pkg && hasActiveBookings(pkg)) {
+      toast.warning("Paket ini tidak bisa dihapus karena masih ada pesanan yang berlangsung.");
+      return;
+    }
     try {
       const res = await fetch(`/api/packages/${id}`, { method: "DELETE" });
       if (res.ok) {
@@ -460,25 +483,32 @@ export default function TravelPackagesPage() {
 
                         {/* Quick edit, toggle, archive, delete */}
                         <div className="flex items-center gap-1">
+                          {hasActiveBookings(pkg) && (
+                            <span className="text-[9px] text-amber-600 font-bold bg-amber-50 border border-amber-200 rounded-lg px-1.5 py-0.5 mr-1" title="Ada pesanan aktif">
+                              <AlertTriangle className="w-3 h-3 inline -mt-px" /> Pesanan Aktif
+                            </span>
+                          )}
                           <button
                             onClick={() => openEditModal(pkg)}
-                            className="p-2 text-slate-500 hover:text-emerald-700 hover:bg-slate-100 rounded-xl transition-colors"
-                            title="Edit Paket"
+                            className={`p-2 rounded-xl transition-colors ${hasActiveBookings(pkg) ? "text-slate-300 cursor-not-allowed" : "text-slate-500 hover:text-emerald-700 hover:bg-slate-100"}`}
+                            title={hasActiveBookings(pkg) ? "Tidak bisa diedit, ada pesanan aktif" : "Edit Paket"}
+                            disabled={hasActiveBookings(pkg)}
                           >
                             <Edit className="w-4 h-4" />
                           </button>
-                          {/* Toggle aktif/nonaktif */}
                           <button
                             onClick={() => handleArchive(pkg.id, pkg.name)}
-                            className="p-2 text-slate-500 hover:text-amber-700 hover:bg-amber-50 rounded-xl transition-colors"
-                            title="Arsipkan Paket (Selesai)"
+                            className={`p-2 rounded-xl transition-colors ${hasActiveBookings(pkg) ? "text-slate-300 cursor-not-allowed" : "text-slate-500 hover:text-amber-700 hover:bg-amber-50"}`}
+                            title={hasActiveBookings(pkg) ? "Tidak bisa diarsipkan, ada pesanan aktif" : "Arsipkan Paket (Selesai)"}
+                            disabled={hasActiveBookings(pkg)}
                           >
                             <Archive className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDelete(pkg.id, pkg.name)}
-                            className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
-                            title="Hapus Permanen"
+                            className={`p-2 rounded-xl transition-colors ${hasActiveBookings(pkg) ? "text-slate-300 cursor-not-allowed" : "text-slate-500 hover:text-red-600 hover:bg-red-50"}`}
+                            title={hasActiveBookings(pkg) ? "Tidak bisa dihapus, ada pesanan aktif" : "Hapus Permanen"}
+                            disabled={hasActiveBookings(pkg)}
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -560,8 +590,9 @@ export default function TravelPackagesPage() {
                             <div className="inline-flex items-center gap-1.5">
                               <button
                                 onClick={() => openEditModal(pkg)}
-                                className="p-1.5 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                                title="Edit Paket"
+                                className={`p-1.5 rounded-lg transition-colors ${hasActiveBookings(pkg) ? "text-slate-300 cursor-not-allowed" : "text-slate-600 hover:text-emerald-600 hover:bg-emerald-50"}`}
+                                title={hasActiveBookings(pkg) ? "Tidak bisa diedit, ada pesanan aktif" : "Edit Paket"}
+                                disabled={hasActiveBookings(pkg)}
                               >
                                 <Edit className="w-4 h-4" />
                               </button>
@@ -580,15 +611,17 @@ export default function TravelPackagesPage() {
                               )}
                               <button
                                 onClick={() => handleArchive(pkg.id, pkg.name)}
-                                className="p-1.5 text-slate-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-                                title="Arsipkan (Selesai)"
+                                className={`p-1.5 rounded-lg transition-colors ${hasActiveBookings(pkg) ? "text-slate-300 cursor-not-allowed" : "text-slate-600 hover:text-amber-600 hover:bg-amber-50"}`}
+                                title={hasActiveBookings(pkg) ? "Tidak bisa diarsipkan, ada pesanan aktif" : "Arsipkan (Selesai)"}
+                                disabled={hasActiveBookings(pkg)}
                               >
                                 <Archive className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => handleDelete(pkg.id, pkg.name)}
-                                className="p-1.5 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                title="Hapus Permanen"
+                                className={`p-1.5 rounded-lg transition-colors ${hasActiveBookings(pkg) ? "text-slate-300 cursor-not-allowed" : "text-slate-600 hover:text-red-600 hover:bg-red-50"}`}
+                                title={hasActiveBookings(pkg) ? "Tidak bisa dihapus, ada pesanan aktif" : "Hapus Permanen"}
+                                disabled={hasActiveBookings(pkg)}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -693,7 +726,7 @@ export default function TravelPackagesPage() {
                       onChange={(e) => {
                         setDepartureDate(e.target.value);
                         if (e.target.value) {
-                          const dl = new Date(new Date(e.target.value).getTime() - 3 * 86400000);
+                          const dl = new Date(new Date(e.target.value).getTime() - 1 * 86400000);
                           setBookingDeadline(dl.toISOString().substring(0, 10));
                         }
                       }}
@@ -709,11 +742,11 @@ export default function TravelPackagesPage() {
                       required
                       value={bookingDeadline}
                       onChange={(e) => setBookingDeadline(e.target.value)}
-                      max={departureDate || undefined}
+                      max={departureDate ? new Date(new Date(departureDate).getTime() - 1 * 86400000).toISOString().substring(0, 10) : undefined}
                       className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500"
                     />
                     <p className="text-[10px] text-rose-500 font-semibold mt-0.5">
-                      Setelah tanggal ini, customer tidak bisa memesan & paket otomatis nonaktif.
+                      Minimal 1 hari sebelum keberangkatan. Setelah tanggal ini, customer tidak bisa memesan.
                     </p>
                   </div>
                 </div>

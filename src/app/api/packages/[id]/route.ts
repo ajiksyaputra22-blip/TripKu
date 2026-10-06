@@ -84,7 +84,7 @@ export async function GET(
     let currentStatus = pkg.status;
     const isExpired = pkg.bookingDeadline
       ? new Date(pkg.bookingDeadline) <= now
-      : pkg.departureDate && new Date(pkg.departureDate).getTime() - now.getTime() <= 3 * 24 * 60 * 60 * 1000;
+      : pkg.departureDate && new Date(pkg.departureDate).getTime() - now.getTime() <= 1 * 24 * 60 * 60 * 1000;
 
     if (pkg.status === "PUBLISHED" && isExpired) {
       await prisma.package.update({
@@ -196,6 +196,20 @@ export async function PUT(
       return NextResponse.json(
         { error: "Anda tidak memiliki izin mengubah paket ini." },
         { status: 403 }
+      );
+    }
+
+    // Cek apakah ada pesanan aktif yang masih berlangsung
+    const activeBookingsCount = await prisma.booking.count({
+      where: {
+        packageId: id,
+        status: { in: ["CONFIRMED", "PAID", "DP_PAID", "WAITING_PAYMENT", "WAITING_DP_PAYMENT"] },
+      },
+    });
+    if (activeBookingsCount > 0) {
+      return NextResponse.json(
+        { error: "Paket tidak bisa diedit karena masih ada pesanan yang berlangsung." },
+        { status: 409 }
       );
     }
 
@@ -408,6 +422,20 @@ export async function DELETE(
       return NextResponse.json(
         { error: "Anda tidak memiliki izin menghapus paket ini." },
         { status: 403 }
+      );
+    }
+
+    // Cek apakah ada pesanan aktif yang masih berlangsung
+    const activeBookingsCount = await prisma.booking.count({
+      where: {
+        packageId: id,
+        status: { in: ["CONFIRMED", "PAID", "DP_PAID", "WAITING_PAYMENT", "WAITING_DP_PAYMENT"] },
+      },
+    });
+    if (activeBookingsCount > 0) {
+      return NextResponse.json(
+        { error: "Paket tidak bisa dihapus karena masih ada pesanan yang berlangsung." },
+        { status: 409 }
       );
     }
 
