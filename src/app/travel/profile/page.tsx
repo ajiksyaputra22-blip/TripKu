@@ -55,7 +55,7 @@ export default function TravelProfilePage() {
           setBankName(data.travel.bankName || "Bank BCA");
           setBankAccount(data.travel.bankAccount || "");
           setBankHolder(data.travel.bankHolder || "");
-          
+
           if (data.travel.logoUrl) setLogoPreview(data.travel.logoUrl);
           if (data.travel.siupUrl || siupFromDesc) setSiupPreview(data.travel.siupUrl || siupFromDesc);
         }
@@ -67,9 +67,9 @@ export default function TravelProfilePage() {
   const handleDocumentChange = (e: React.ChangeEvent<HTMLInputElement>, type: "SIUP") => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { 
+    if (file.size > 5 * 1024 * 1024) {
       setSiupError("Maksimal ukuran file 5 MB.");
-      return; 
+      return;
     }
     setSiupError(null);
     setSiupFile(file);
@@ -109,7 +109,7 @@ export default function TravelProfilePage() {
       const res = await fetch("/api/profile/travel", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           businessName, address, phone, whatsapp, description,
           bankName, bankAccount, bankHolder,
           logoUrl, siupUrl
@@ -140,12 +140,11 @@ export default function TravelProfilePage() {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-700 mb-1">
-            <span>Travel Provider Portal</span>
           </div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
             Profil Perusahaan
           </h1>
-          
+
           {isPending && (
             <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -202,7 +201,7 @@ export default function TravelProfilePage() {
                     <Upload className="w-6 h-6 text-slate-400 group-hover:text-emerald-600 transition-colors" />
                   )}
                 </div>
-                <div className="text-[10px] text-slate-500 font-medium">Upload Logo<br/>(Maks 3MB)</div>
+                <div className="text-[10px] text-slate-500 font-medium">Upload Logo<br />(Maks 3MB)</div>
               </div>
               <div className="flex-1 space-y-4">
                 <div>
@@ -238,7 +237,7 @@ export default function TravelProfilePage() {
             <h2 className="text-base font-bold text-slate-900 flex items-center gap-2 mb-4 pb-4 border-b border-slate-100">
               <FileText className="w-4 h-4 text-emerald-600" /> Dokumen Legalitas Perusahaan (Wajib)
             </h2>
-            
+
             <div className="space-y-3">
               <label className="text-xs font-bold text-slate-700 block">
                 Surat Izin Usaha (SIUP / NIB / TDUP) <span className="text-rose-500">*</span>{" "}
