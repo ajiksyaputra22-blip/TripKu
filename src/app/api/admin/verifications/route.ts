@@ -56,18 +56,26 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const session = await getSession();
-    if (!session || session.role !== "ADMIN") {
-      return NextResponse.json({ error: "Akses ditolak." }, { status: 403 });
+    if (!session) {
+      return NextResponse.json({ error: "Sesi tidak valid. Silakan login ulang.", code: "NO_SESSION" }, { status: 401 });
+    }
+    if (session.role !== "ADMIN") {
+      return NextResponse.json({ error: "Akses ditolak. Hanya Admin.", code: "FORBIDDEN" }, { status: 403 });
     }
 
     const body = await request.json();
     const { type, id, action } = body; // type: "TRAVEL" | "WORKER", action: "APPROVED" | "REJECTED"
 
     if (!type || !id || !action) {
-      return NextResponse.json({ error: "Parameter tidak lengkap." }, { status: 400 });
+      return NextResponse.json({ error: "Parameter tidak lengkap.", code: "BAD_REQUEST" }, { status: 400 });
     }
 
     if (type === "TRAVEL") {
+      const travel = await prisma.travel.findUnique({ where: { id } });
+      if (!travel) {
+        return NextResponse.json({ error: `Travel dengan ID ${id} tidak ditemukan.`, code: "NOT_FOUND" }, { status: 404 });
+      }
+
       const updated = await prisma.travel.update({
         where: { id },
         data: { verificationStatus: action },
@@ -82,6 +90,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, travel: updated });
     } else {
       // For worker
+      const worker = await prisma.workerProfile.findUnique({ where: { id } });
+      if (!worker) {
+        return NextResponse.json({ error: `Worker dengan ID ${id} tidak ditemukan.`, code: "NOT_FOUND" }, { status: 404 });
+      }
+
       const updated = await prisma.workerProfile.update({
         where: { id },
         data: { isAvailable: action === "APPROVED" },
@@ -96,7 +109,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, worker: updated });
     }
   } catch (error) {
-    console.error("Process verification error:", error);
-    return NextResponse.json({ error: "Gagal memproses verifikasi." }, { status: 500 });
+    const errMessage = error instanceof Error ? error.message : String(error);
+    console.error("Process verification error:", errMessage);
+    return NextResponse.json(
+      { error: "Gagal memproses verifikasi.", detail: errMessage, code: "SERVER_ERROR" },
+      { status: 500 }
+    );
   }
 }

@@ -55,14 +55,21 @@ export default function AdminDashboardPage() {
           action,
         }),
       });
+      const json = await res.json();
       if (res.ok) {
         toast.success(`Status mitra travel berhasil diubah menjadi: ${action}`);
         fetchData();
       } else {
-        toast.error("Gagal memproses verifikasi travel.");
+        console.error("Verifikasi travel gagal:", res.status, json);
+        if (res.status === 401) {
+          toast.error("Sesi habis. Silakan login ulang.");
+        } else {
+          toast.error(json?.error || "Gagal memproses verifikasi travel.");
+        }
       }
-    } catch {
-      toast.error("Gagal memproses verifikasi.");
+    } catch (e) {
+      console.error("handleVerifyTravel network error:", e);
+      toast.error("Koneksi gagal. Periksa jaringan Anda.");
     }
   };
 
@@ -77,14 +84,21 @@ export default function AdminDashboardPage() {
           action,
         }),
       });
+      const json = await res.json();
       if (res.ok) {
         toast.success(`Status pekerja berhasil diubah menjadi: ${action}`);
         fetchData();
       } else {
-        toast.error("Gagal memproses verifikasi pekerja.");
+        console.error("Verifikasi pekerja gagal:", res.status, json);
+        if (res.status === 401) {
+          toast.error("Sesi habis. Silakan login ulang.");
+        } else {
+          toast.error(json?.error || "Gagal memproses verifikasi pekerja.");
+        }
       }
-    } catch {
-      toast.error("Gagal memproses verifikasi pekerja.");
+    } catch (e) {
+      console.error("handleVerifyWorker network error:", e);
+      toast.error("Koneksi gagal. Periksa jaringan Anda.");
     }
   };
 
@@ -322,7 +336,7 @@ export default function AdminDashboardPage() {
                                 {simUrl && (
                                   <a href={simUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-purple-700 font-bold hover:underline text-[11px]">
                                     <FileText className="w-3.5 h-3.5 shrink-0" />
-                                    <span>Lihat SIM (Wajib) ✓</span>
+                                    <span>Lihat SIM</span>
                                   </a>
                                 )}
                                 {certUrl && (

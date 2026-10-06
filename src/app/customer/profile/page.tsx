@@ -96,7 +96,7 @@ export default function CustomerProfilePage() {
       setSuccess(true);
       // Automatically hide success message after 3 seconds
       setTimeout(() => setSuccess(false), 3000);
-      
+
       // Update local profile state
       setProfile((prev: any) => ({ ...prev, ...data.user }));
     } catch (err: any) {
@@ -117,11 +117,10 @@ export default function CustomerProfilePage() {
   return (
     <div className="min-h-screen bg-slate-50 py-8 sm:py-12">
       <div className="max-w-xl mx-auto px-4 sm:px-6">
-        
+
         {/* Header */}
         <div className="mb-8 text-center sm:text-left">
           <div className="flex items-center justify-center sm:justify-start gap-2 text-xs font-bold uppercase tracking-wider text-emerald-700 mb-1">
-            <span>Pengaturan Akun</span>
           </div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
             Profil Saya
@@ -146,7 +145,7 @@ export default function CustomerProfilePage() {
         )}
 
         <form onSubmit={handleSave} className="space-y-6">
-          
+
           {/* Foto Profil Section */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow">
             <h2 className="text-sm font-bold text-slate-900 mb-4">
@@ -182,7 +181,7 @@ export default function CustomerProfilePage() {
             <h2 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3">
               Informasi Pribadi
             </h2>
-            
+
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
                 Alamat Email <span className="text-slate-400 font-normal">(Tidak dapat diubah)</span>
