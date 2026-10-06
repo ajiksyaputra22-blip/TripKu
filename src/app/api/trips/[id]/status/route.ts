@@ -95,7 +95,9 @@ export async function PATCH(
 
       if (session.role === "GUIDE" || userAssignment?.role === "GUIDE") {
         guideStarted = true;
+        driverStarted = true;
         guideStartedAt = new Date();
+        driverStartedAt = new Date();
       } else if (session.role === "DRIVER" || userAssignment?.role === "DRIVER") {
         driverStarted = true;
         driverStartedAt = new Date();
@@ -106,26 +108,10 @@ export async function PATCH(
         driverStartedAt = new Date();
       }
 
-      // Mutual check: If both guide and driver exist on trip, both must press Mulai Trip
-      const bothMustConfirm = !!guideAssignment && !!driverAssignment;
-      const bothConfirmed = guideStarted && driverStarted;
-
-      let newStatus = trip.status;
-      let responseMessage = "Status perjalanan diperbarui.";
+      // Tour Guide memegang kendali memulai trip; driver otomatis ikut on-going
+      let newStatus = "ONGOING";
+      let responseMessage = "Perjalanan rombongan resmi dimulai 🚀";
       let waitingFor: "GUIDE" | "DRIVER" | null = null;
-
-      if (!bothMustConfirm || bothConfirmed) {
-        newStatus = "ONGOING";
-        responseMessage = "Kru lengkap! Perjalanan rombongan resmi dimulai 🚀";
-      } else if (guideStarted && !driverStarted) {
-        newStatus = "SCHEDULED";
-        waitingFor = "DRIVER";
-        responseMessage = "Tour Guide telah siap! Menunggu Driver menekan 'Mulai Trip' untuk berangkat bersama.";
-      } else if (driverStarted && !guideStarted) {
-        newStatus = "SCHEDULED";
-        waitingFor = "GUIDE";
-        responseMessage = "Driver telah siap! Menunggu Tour Guide menyelesaikan absensi & menekan 'Mulai Trip'.";
-      }
 
       const updatedTrip = await prisma.trip.update({
         where: { id },

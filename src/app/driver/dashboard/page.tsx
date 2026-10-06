@@ -48,6 +48,24 @@ export default function DriverDashboardPage() {
     }
   };
 
+  const isTripDay = (dateStr?: string | Date) => {
+    if (!dateStr) return true;
+    let tripDate: Date;
+    if (typeof dateStr === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateStr.trim())) {
+      const [y, m, d] = dateStr.trim().split("-").map(Number);
+      tripDate = new Date(y, m - 1, d);
+    } else {
+      tripDate = new Date(dateStr);
+    }
+    if (isNaN(tripDate.getTime())) return true;
+
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const tripStart = new Date(tripDate.getFullYear(), tripDate.getMonth(), tripDate.getDate()).getTime();
+
+    return todayStart >= tripStart;
+  };
+
   useEffect(() => { fetchAssignments(); }, []);
 
   // REQ-5.3: Negosiasi Fee Modal State
@@ -519,101 +537,49 @@ export default function DriverDashboardPage() {
                                 <span className="text-[10px] text-slate-500">Tawaran diajukan: {formatRupiah(a.fee?.negotiatedAmount || a.feeAmount)}</span>
                               </div>
                             )}
+
                             {isAccepted && (
                               <>
-                                {/* Trip Room - selalu accessible saat ACCEPTED */}
+                                {/* 1. Trip Room */}
                                 <Link href={`/customer/trip-room/${a.trip.id}`}
                                   className="px-3 py-1.5 rounded-xl bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-200 text-xs font-bold flex items-center gap-1">
                                   <MessageSquare className="w-3.5 h-3.5 text-blue-600" /><span>Trip Room</span>
                                 </Link>
 
-                                {/* Tombol Titik Lokasi Perjalanan (Khusus Driver) - Hanya muncul saat ONGOING atau COMPLETED */}
-                                {(a.trip.status === "ONGOING" || a.trip.status === "COMPLETED") && (
+                                {/* 2. Tombol Titik Lokasi Perjalanan (Khusus Driver) */}
+                                {!isTripDay(a.trip.scheduleDate) ? (
                                   <button
                                     type="button"
                                     onClick={() => setSelectedRouteAssignment(a)}
-                                    className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors ${a.trip.status === "COMPLETED"
-                                      ? "bg-slate-100 text-slate-500 hover:bg-slate-200 border-slate-200"
-                                      : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border-emerald-200"
-                                      }`}
-                                    title={a.trip.status === "COMPLETED" ? "Lihat rute lokasi perjalanan" : "Lihat rute lokasi perjalanan"}
+                                    className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+                                    title={`Jadwal keberangkatan: ${formatDate(a.trip.scheduleDate)}. Klik untuk melihat rute titik lokasi (View Only)`}
+                                  >
+                                    <MapPin className="w-3.5 h-3.5 text-slate-500" />
+                                    <span>Titik Lokasi (View Only)</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedRouteAssignment(a)}
+                                    className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors ${
+                                      a.trip.status === "COMPLETED"
+                                        ? "bg-slate-100 text-slate-500 hover:bg-slate-200 border-slate-200"
+                                        : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border-emerald-200"
+                                    }`}
+                                    title="Lihat rute lokasi perjalanan"
                                   >
                                     <MapPin className={`w-3.5 h-3.5 ${a.trip.status === "COMPLETED" ? "text-slate-400" : "text-emerald-600"}`} />
                                     <span>Titik Lokasi</span>
                                   </button>
                                 )}
 
-                                {/* Status Flow Buttons */}
-                                {(() => {
-                                  const isFeePaid = a.fee?.paymentStatus === "PAID" || a.fee?.paymentStatus === "DP_PAID" || a.fee?.dpPaid || a.dpFeePaid;
-
-                                  const stops = getTripPoints(a.trip);
-                                  const lastStop = stops[stops.length - 1];
-                                  const allStopsReported = (a.trip.checkpoints && a.trip.checkpoints.length >= stops.length) || a.trip.currentLocation === lastStop;
-
-                                  if (a.trip.status === "COMPLETED") {
-                                    return (
-                                      <span className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 border border-slate-200 text-xs font-bold flex items-center gap-1.5">
-                                        <Check className="w-3.5 h-3.5 text-emerald-600" />
-                                        <span>Perjalanan Selesai</span>
-                                      </span>
-                                    );
-                                  }
-
-                                  if (a.trip.status === "SCHEDULED") {
-                                    // Belum bayar fee
-                                    if (!isFeePaid) {
-                                      return (
-                                        <button disabled
-                                          className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-400 border border-slate-200 text-xs font-bold flex items-center gap-1 cursor-not-allowed"
-                                          title="Menunggu pembayaran fee (DP/Lunas) oleh Admin Travel">
-                                          <Clock className="w-3.5 h-3.5" />
-                                          <span>Mulai Trip (Tunggu Fee)</span>
-                                        </button>
-                                      );
-                                    }
-                                    // Driver sudah klik, tapi Guide belum
-                                    if (a.trip.driverStarted && !a.trip.guideStarted) {
-                                      return (
-                                        <span
-                                          className="px-3 py-1.5 rounded-xl bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold flex items-center gap-1.5 animate-pulse"
-                                          title="Driver telah siap! Menunggu Tour Guide menekan Mulai Trip">
-                                          <Clock className="w-3.5 h-3.5 text-amber-600" />
-                                          <span>Menunggu Tour Guide Mulai Trip</span>
-                                        </span>
-                                      );
-                                    }
-                                    // Aktif: bisa mulai trip
-                                    return (
-                                      <button onClick={() => handleUpdateTripStatus(a.trip.id, "ONGOING")}
-                                        className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer">
-                                        <Navigation className="w-3.5 h-3.5" />
-                                        <span>Mulai Trip</span>
-                                      </button>
-                                    );
-                                  }
-
-                                  // ONGOING status
-                                  return (
-                                    <>
-                                      {/* Selesaikan Trip - aktif setelah guide lapor semua titik */}
-                                      {!allStopsReported ? (
-                                        <button disabled
-                                          className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-400 border border-slate-200 text-xs font-bold flex items-center gap-1 cursor-not-allowed opacity-75"
-                                          title="Menunggu Tour Guide melaporkan semua titik perjalanan">
-                                          <Clock className="w-3.5 h-3.5" />
-                                          <span>Selesaikan Trip (Menunggu Laporan Guide)</span>
-                                        </button>
-                                      ) : (
-                                        <button onClick={() => handleUpdateTripStatus(a.trip.id, "COMPLETED")}
-                                          className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-xs flex items-center gap-1 cursor-pointer">
-                                          <Check className="w-3.5 h-3.5 text-emerald-400" />
-                                          <span>Selesaikan Trip</span>
-                                        </button>
-                                      )}
-                                    </>
-                                  );
-                                })()}
+                                {/* 3. Status Perjalanan Selesai */}
+                                {a.trip.status === "COMPLETED" && (
+                                  <span className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 border border-slate-200 text-xs font-bold flex items-center gap-1.5">
+                                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span>Perjalanan Selesai</span>
+                                  </span>
+                                )}
                               </>
                             )}
                           </div>
@@ -728,6 +694,8 @@ export default function DriverDashboardPage() {
 
               const points = getTripPoints(trip);
               const isCompleted = trip?.status === "COMPLETED";
+              const isOngoing = trip?.status === "ONGOING";
+              const isTripDayReached = isTripDay(trip?.scheduleDate);
               const currentIdx = getCurrentPointIndex(trip, points);
               const nextPointName = currentIdx < points.length - 1 ? points[currentIdx + 1] : null;
 
@@ -749,16 +717,28 @@ export default function DriverDashboardPage() {
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
                                 (Selesai)
                               </span>
-                            ) : (
+                            ) : !isTripDayReached ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-slate-100 text-slate-700 border border-slate-300">
+                                View Only
+                              </span>
+                            ) : isOngoing ? (
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-800 border border-blue-200">
                                 On Going
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-200">
+                                Terjadwal
                               </span>
                             )}
                           </div>
                           <p className="text-[11px] font-normal text-slate-500">
                             {isCompleted
                               ? "Riwayat rute perjalanan trip."
-                              : "Klik titik lokasi untuk buka Google Maps & klik 'Titik Berikutnya' saat melaju."}
+                              : !isTripDayReached
+                              ? `Jadwal: ${formatDate(trip?.scheduleDate)}. Mode lihat saja rute perjalanan.`
+                              : isOngoing
+                              ? "Klik titik lokasi untuk buka Google Maps & klik 'Titik Berikutnya' saat melaju."
+                              : "Menunggu Tour Guide memulai trip."}
                           </p>
                         </div>
                       </div>
@@ -778,6 +758,32 @@ export default function DriverDashboardPage() {
                         <div>
                           <span className="font-bold block">Perjalanan Telah Selesai</span>
                           <span className="text-[11px] text-emerald-700">Seluruh titik lokasi telah tuntas dilalui.</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Banner jika belum hari keberangkatan (View Only) */}
+                    {!isTripDayReached && !isCompleted && (
+                      <div className="mb-4 p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-700 flex items-center gap-2.5 shrink-0">
+                        <Clock className="w-5 h-5 text-slate-500 shrink-0" />
+                        <div>
+                          <span className="font-bold block text-slate-900">Mode Lihat Saja (View Only)</span>
+                          <span className="text-[11px] text-slate-600">
+                            Jadwal keberangkatan adalah <strong>{formatDate(trip?.scheduleDate)}</strong>. Anda dapat melihat daftar rute dan membuka titik di Google Maps. Navigasi interaktif dapat diakses saat hari keberangkatan tiba.
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Banner jika sudah hari keberangkatan namun trip belum dimulai oleh guide */}
+                    {isTripDayReached && trip?.status === "SCHEDULED" && !isCompleted && (
+                      <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 flex items-center gap-2.5 shrink-0">
+                        <Clock className="w-5 h-5 text-amber-600 shrink-0" />
+                        <div>
+                          <span className="font-bold block">Menunggu Tour Guide Memulai Trip</span>
+                          <span className="text-[11px] text-amber-700">
+                            Tour guide perlu melakukan absensi keberangkatan dan menekan Mulai Trip untuk mengaktifkan navigasi rute perjalanan.
+                          </span>
                         </div>
                       </div>
                     )}
@@ -906,9 +912,9 @@ export default function DriverDashboardPage() {
 
                     {/* Action Bar Bawah: Khusus Driver */}
                     <div className="pt-3 border-t border-slate-100 mt-3 flex flex-col sm:flex-row gap-2 shrink-0">
-                      {!isCompleted ? (
+                      {isOngoing ? (
                         <>
-                          {/* Tombol Titik Berikutnya ATAU Selesaikan Perjalanan jika sudah di titik akhir */}
+                          {/* Tombol Titik Berikutnya ATAU Info Semua Titik Telah Dilalui */}
                           {nextPointName ? (
                             <button
                               type="button"
@@ -923,18 +929,10 @@ export default function DriverDashboardPage() {
                               </span>
                             </button>
                           ) : (
-                            <button
-                              type="button"
-                              disabled={submittingCompleteTrip}
-                              onClick={() => handleCompleteTripFromModal(trip.id)}
-                              className="flex-1 py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
-                              title="Semua titik telah tercapai. Klik untuk menyelesaikan perjalanan trip."
-                            >
-                              <Check className="w-4 h-4 text-white" />
-                              <span>
-                                {submittingCompleteTrip ? "Menyelesaikan Perjalanan..." : "Selesaikan Perjalanan (Trip Selesai) 🎉"}
-                              </span>
-                            </button>
+                            <div className="flex-1 py-2.5 px-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center justify-center gap-1.5">
+                              <Check className="w-4 h-4 text-emerald-600" />
+                              <span>Semua titik telah dilalui (Menunggu Tour Guide Menyelesaikan Trip)</span>
+                            </div>
                           )}
 
                           <button

@@ -768,6 +768,7 @@ export default function TravelPackagesPage() {
                     type="number"
                     required
                     min="1"
+                    placeholder="Contoh: 3"
                     value={durationDays}
                     onChange={(e) => setDurationDays(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500"
@@ -779,6 +780,7 @@ export default function TravelPackagesPage() {
                     type="number"
                     required
                     min="1"
+                    placeholder="Contoh: 20"
                     value={capacity}
                     onChange={(e) => setCapacity(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500"
@@ -806,6 +808,7 @@ export default function TravelPackagesPage() {
                   <label className="block font-bold text-slate-700 mb-1">Kendaraan / Armada</label>
                   <input
                     type="text"
+                    placeholder="Contoh: HiAce Commuter / Bus Pariwisata AC"
                     value={vehicle}
                     onChange={(e) => setVehicle(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500"
@@ -817,6 +820,7 @@ export default function TravelPackagesPage() {
                 <label className="block font-bold text-slate-700 mb-1">Fasilitas Termasuk (Pisahkan dengan koma)</label>
                 <input
                   type="text"
+                  placeholder="Contoh: Transportasi AC, Tiket Wisata, Makan 3x sehari, Dokumentasi, Guide profesional"
                   value={facilities}
                   onChange={(e) => setFacilities(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500"
@@ -871,6 +875,7 @@ export default function TravelPackagesPage() {
                 <textarea
                   rows={4}
                   required
+                  placeholder="Contoh: Hari 1 - Berangkat dari Surabaya pukul 22.00 WIB menuju Bromo. Hari 2 - Sunrise di Penanjakan, turun ke Kawah Bromo. Hari 3 - Wisata Pasir Berbisik & kembali ke kota. Termasuk: makan, hotel, dan dokumentasi profesional."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500"
@@ -897,6 +902,7 @@ export default function TravelPackagesPage() {
                   <input
                     type="number"
                     min="0" max="100"
+                    placeholder="Contoh: 30"
                     value={dpPercentage}
                     onChange={(e) => setDpPercentage(e.target.value)}
                     className="w-24 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500"

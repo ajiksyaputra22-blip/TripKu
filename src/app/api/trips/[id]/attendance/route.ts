@@ -23,6 +23,25 @@ export async function POST(
       return NextResponse.json({ error: "Data absensi tidak lengkap." }, { status: 400 });
     }
 
+    if (type === "DEPARTURE" && session.role === "GUIDE") {
+      const trip = await prisma.trip.findUnique({
+        where: { id: tripId },
+        select: { scheduleDate: true },
+      });
+      if (trip && trip.scheduleDate) {
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        const tripDate = new Date(trip.scheduleDate);
+        const tripStart = new Date(tripDate.getFullYear(), tripDate.getMonth(), tripDate.getDate()).getTime();
+        if (todayStart < tripStart) {
+          return NextResponse.json(
+            { error: "Absen keberangkatan hanya dapat dilakukan pada hari jadwal keberangkatan." },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
     const results = [];
     for (const att of attendances) {
       const record = await prisma.tripAttendance.upsert({

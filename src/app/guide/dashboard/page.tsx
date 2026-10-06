@@ -63,6 +63,24 @@ export default function GuideDashboardPage() {
     }
   };
 
+  const isTripDay = (dateStr?: string | Date) => {
+    if (!dateStr) return true;
+    let tripDate: Date;
+    if (typeof dateStr === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateStr.trim())) {
+      const [y, m, d] = dateStr.trim().split("-").map(Number);
+      tripDate = new Date(y, m - 1, d);
+    } else {
+      tripDate = new Date(dateStr);
+    }
+    if (isNaN(tripDate.getTime())) return true;
+
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const tripStart = new Date(tripDate.getFullYear(), tripDate.getMonth(), tripDate.getDate()).getTime();
+
+    return todayStart >= tripStart;
+  };
+
   useEffect(() => { fetchAssignments(); }, []);
 
   // REQ-5.3: Negosiasi Fee Modal State
@@ -213,6 +231,10 @@ export default function GuideDashboardPage() {
   };
 
   const openAttendanceModal = async (assignment: any, type: "DEPARTURE" | "RETURN", viewOnly = false) => {
+    if (!viewOnly && type === "DEPARTURE" && !isTripDay(assignment?.trip?.scheduleDate)) {
+      toast.error(`Absen Berangkat hanya dapat diakses pada hari keberangkatan (${formatDate(assignment?.trip?.scheduleDate)}).`);
+      return;
+    }
     setSelectedAssignment(assignment);
     setAttendanceType(type);
     setAttendanceViewOnly(viewOnly);
@@ -565,14 +587,25 @@ export default function GuideDashboardPage() {
                                         <>
                                           {/* Absen Berangkat */}
                                           {!isDepartureDone ? (
-                                            <button
-                                              onClick={() => openAttendanceModal(a, "DEPARTURE")}
-                                              className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1 shadow-xs cursor-pointer"
-                                              title="Wajib absen berangkat sebelum mulai trip"
-                                            >
-                                              <UserCheck className="w-3.5 h-3.5" />
-                                              <span>Absen Berangkat</span>
-                                            </button>
+                                            !isTripDay(a.trip.scheduleDate) ? (
+                                              <button
+                                                disabled
+                                                className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-400 border border-slate-200 text-xs font-bold flex items-center gap-1 cursor-not-allowed opacity-75"
+                                                title={`Absen Berangkat hanya dapat diakses pada hari keberangkatan (${formatDate(a.trip.scheduleDate)})`}
+                                              >
+                                                <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                                <span>Absen Berangkat (Belum Jadwalnya)</span>
+                                              </button>
+                                            ) : (
+                                              <button
+                                                onClick={() => openAttendanceModal(a, "DEPARTURE")}
+                                                className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1 shadow-xs cursor-pointer"
+                                                title="Wajib absen berangkat sebelum mulai trip"
+                                              >
+                                                <UserCheck className="w-3.5 h-3.5" />
+                                                <span>Absen Berangkat</span>
+                                              </button>
+                                            )
                                           ) : (
                                             <button
                                               onClick={() => openAttendanceModal(a, "DEPARTURE", true)}

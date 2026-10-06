@@ -216,6 +216,18 @@ export async function POST(request: Request) {
       });
       createdAssignments.push(assignment);
 
+      // Sinkronisasi status lamaran kru: jika worker sudah mengajukan lamaran
+      // untuk paket ini, otomatis ubah statusnya ke APPROVED agar tampilan
+      // di bursa lowongan kru sinkron dengan penugasan manual admin travel.
+      await prisma.crewApplication.updateMany({
+        where: {
+          packageId: trip.packageId,
+          workerId: item.workerId,
+          status: "PENDING",
+        },
+        data: { status: "APPROVED" },
+      });
+
       // Kirim notifikasi ke worker yang ditugaskan
       await createNotification({
         userId: item.workerId,
