@@ -166,7 +166,7 @@ export default function TravelPackagesPage() {
     if (pkg.bookingDeadline) {
       setBookingDeadline(new Date(pkg.bookingDeadline).toISOString().substring(0, 10));
     } else if (pkg.departureDate) {
-      const dl = new Date(new Date(pkg.departureDate).getTime() - 3 * 86400000);
+      const dl = new Date(new Date(pkg.departureDate).getTime() - 1 * 86400000);
       setBookingDeadline(dl.toISOString().substring(0, 10));
     }
     // Load current status so edit can change it
