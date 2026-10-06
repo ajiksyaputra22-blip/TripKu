@@ -552,20 +552,19 @@ export default function DriverDashboardPage() {
                                     type="button"
                                     onClick={() => setSelectedRouteAssignment(a)}
                                     className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
-                                    title={`Jadwal keberangkatan: ${formatDate(a.trip.scheduleDate)}. Klik untuk melihat rute titik lokasi (View Only)`}
+                                    title={`Jadwal keberangkatan: ${formatDate(a.trip.scheduleDate)}. Klik untuk melihat rute titik lokasi`}
                                   >
                                     <MapPin className="w-3.5 h-3.5 text-slate-500" />
-                                    <span>Titik Lokasi (View Only)</span>
+                                    <span>Titik Lokasi</span>
                                   </button>
                                 ) : (
                                   <button
                                     type="button"
                                     onClick={() => setSelectedRouteAssignment(a)}
-                                    className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors ${
-                                      a.trip.status === "COMPLETED"
-                                        ? "bg-slate-100 text-slate-500 hover:bg-slate-200 border-slate-200"
-                                        : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border-emerald-200"
-                                    }`}
+                                    className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors ${a.trip.status === "COMPLETED"
+                                      ? "bg-slate-100 text-slate-500 hover:bg-slate-200 border-slate-200"
+                                      : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border-emerald-200"
+                                      }`}
                                     title="Lihat rute lokasi perjalanan"
                                   >
                                     <MapPin className={`w-3.5 h-3.5 ${a.trip.status === "COMPLETED" ? "text-slate-400" : "text-emerald-600"}`} />
@@ -735,10 +734,10 @@ export default function DriverDashboardPage() {
                             {isCompleted
                               ? "Riwayat rute perjalanan trip."
                               : !isTripDayReached
-                              ? `Jadwal: ${formatDate(trip?.scheduleDate)}. Mode lihat saja rute perjalanan.`
-                              : isOngoing
-                              ? "Klik titik lokasi untuk buka Google Maps & klik 'Titik Berikutnya' saat melaju."
-                              : "Menunggu Tour Guide memulai trip."}
+                                ? `Jadwal: ${formatDate(trip?.scheduleDate)}. Mode lihat saja rute perjalanan.`
+                                : isOngoing
+                                  ? "Klik titik lokasi untuk buka Google Maps & klik 'Titik Berikutnya' saat melaju."
+                                  : "Menunggu Tour Guide memulai trip."}
                           </p>
                         </div>
                       </div>
@@ -762,12 +761,11 @@ export default function DriverDashboardPage() {
                       </div>
                     )}
 
-                    {/* Banner jika belum hari keberangkatan (View Only) */}
+                    {/* Banner jika belum hari keberangkatan */}
                     {!isTripDayReached && !isCompleted && (
                       <div className="mb-4 p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-700 flex items-center gap-2.5 shrink-0">
                         <Clock className="w-5 h-5 text-slate-500 shrink-0" />
                         <div>
-                          <span className="font-bold block text-slate-900">Mode Lihat Saja (View Only)</span>
                           <span className="text-[11px] text-slate-600">
                             Jadwal keberangkatan adalah <strong>{formatDate(trip?.scheduleDate)}</strong>. Anda dapat melihat daftar rute dan membuka titik di Google Maps. Navigasi interaktif dapat diakses saat hari keberangkatan tiba.
                           </span>
@@ -912,7 +910,8 @@ export default function DriverDashboardPage() {
 
                     {/* Action Bar Bawah: Khusus Driver */}
                     <div className="pt-3 border-t border-slate-100 mt-3 flex flex-col sm:flex-row gap-2 shrink-0">
-                      {isOngoing ? (
+                      {/* Tombol aksi hanya aktif jika sudah hari keberangkatan DAN trip sedang berjalan */}
+                      {isTripDayReached && isOngoing ? (
                         <>
                           {/* Tombol Titik Berikutnya ATAU Info Semua Titik Telah Dilalui */}
                           {nextPointName ? (
@@ -944,6 +943,7 @@ export default function DriverDashboardPage() {
                           </button>
                         </>
                       ) : (
+                        /* Belum hari keberangkatan ATAU trip belum dimulai guide → hanya tombol Tutup */
                         <button
                           type="button"
                           onClick={() => setSelectedRouteAssignment(null)}
