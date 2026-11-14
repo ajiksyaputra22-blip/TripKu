@@ -79,7 +79,12 @@ export async function GET(
       return NextResponse.json({ error: "Akses ditolak." }, { status: 403 });
     }
 
-    return NextResponse.json({ booking });
+    return NextResponse.json({
+      booking: {
+        ...booking,
+        adminFeeTotal: booking.adminFeeTotal ?? 0,
+      },
+    });
   } catch (error) {
     console.error("Get booking error:", error);
     return NextResponse.json({ error: "Gagal memuat detail booking." }, { status: 500 });

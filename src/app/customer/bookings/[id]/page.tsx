@@ -193,6 +193,16 @@ export default function CustomerBookingDetailPage() {
   const needsPelunasan = booking.status === "NEEDS_PELUNASAN" || (hasDP && dpPayment?.status === "VERIFIED" && !pelunasanPayment);
   const showPaymentForm = booking.status === "WAITING_PAYMENT" || booking.status === "WAITING_DP_PAYMENT" || booking.status === "NEEDS_PELUNASAN" || pelunasanPayment?.status === "REJECTED" || dpPayment?.status === "REJECTED";
 
+  // Rincian Pembayaran
+  const packagePrice = booking.package?.price || 0;
+  const participantCount = booking.participantCount || booking.participants?.length || 1;
+  const packageSubtotal = packagePrice * participantCount;
+  const adminFeeTotal = typeof booking.adminFeeTotal === "number" && booking.adminFeeTotal > 0
+    ? booking.adminFeeTotal
+    : (booking.adminFeeTotal === 0 ? 0 : 5000 * participantCount);
+  const adminFeePerPerson = adminFeeTotal > 0 ? Math.round(adminFeeTotal / participantCount) : (booking.adminFeeTotal === 0 ? 0 : 5000);
+  const totalPayment = booking.totalPrice;
+
   // Checkpoint route from package
   let checkpointRoute: string[] = [];
   try {
@@ -381,6 +391,41 @@ export default function CustomerBookingDetailPage() {
                 }`}>
                 {hasDP ? `Skema DP (${Math.round(dpAmount / booking.totalPrice * 100)}%)` : "Skema Bayar Penuh"}
               </span>
+            </div>
+
+            {/* Rincian Pembayaran */}
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 mb-4 text-xs space-y-2">
+              <h4 className="font-bold text-slate-900 text-xs mb-2">Rincian Pembayaran</h4>
+
+              <div className="flex justify-between items-center text-slate-600">
+                <span>Harga Paket per Orang</span>
+                <span className="font-medium text-slate-900">{formatRupiah(packagePrice)}</span>
+              </div>
+
+              <div className="flex justify-between items-center text-slate-600">
+                <span>Jumlah Peserta</span>
+                <span className="font-medium text-slate-900">{participantCount} Orang</span>
+              </div>
+
+              <div className="flex justify-between items-center text-slate-600">
+                <span>Subtotal Harga Paket</span>
+                <span className="font-semibold text-slate-900">{formatRupiah(packageSubtotal)}</span>
+              </div>
+
+              <div className="flex justify-between items-center text-slate-600">
+                <span>Biaya Admin per Orang</span>
+                <span className="font-medium text-slate-900">{formatRupiah(adminFeePerPerson)}</span>
+              </div>
+
+              <div className="flex justify-between items-center text-slate-600">
+                <span>Total Biaya Admin</span>
+                <span className="font-semibold text-slate-900">{formatRupiah(adminFeeTotal)}</span>
+              </div>
+
+              <div className="border-t border-slate-200 pt-2 flex justify-between items-baseline font-bold">
+                <span className="text-slate-900 text-xs">Total Pembayaran</span>
+                <span className="text-sm font-extrabold text-emerald-600">{formatRupiah(totalPayment)}</span>
+              </div>
             </div>
 
             {/* H-2 Mandatory Pelunasan Warning (if customer chose DP) */}

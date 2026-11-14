@@ -161,7 +161,9 @@ export async function POST(request: Request) {
     }
 
     const count = parseInt(participantCount);
-    const totalPrice = pkg.price * count;
+    const adminFeePerPerson = 5000;
+    const adminFeeTotal = adminFeePerPerson * count;
+    const totalPrice = (pkg.price * count) + adminFeeTotal;
     const bookingCode = `WST-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
     // Determine payment scheme chosen by customer (DP vs Full Payment)
@@ -176,6 +178,7 @@ export async function POST(request: Request) {
         packageId,
         participantCount: count,
         totalPrice,
+        adminFeeTotal,
         dpAmount,
         dpPaid: false,
         notes,

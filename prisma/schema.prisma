@@ -123,6 +123,7 @@ model Booking {
   bookingDate      DateTime      @default(now())
   participantCount Int           @default(1)
   totalPrice       Float
+  adminFeeTotal    Int           @default(0)
   dpAmount         Float         @default(0)
   dpPaid           Boolean       @default(false)
   notes            String?
