@@ -137,7 +137,7 @@ export default function Footer() {
                   +62 895-3454-28383
                 </a>
               </li>
-              <li>Senin s/d Minggu, 08.00 - 20.00 WIB</li>
+              <li>Senin s/d Jum'at, 08.00 - 17.00 WIB</li>
             </ul>
 
             <div className="flex items-center gap-2 mt-5">
