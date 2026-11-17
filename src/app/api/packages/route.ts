@@ -12,6 +12,7 @@ export async function GET(request: Request) {
     const duration = searchParams.get("duration");
     const travelId = searchParams.get("travelId");
     const originCity = searchParams.get("originCity");
+    const province = searchParams.get("province");
     const category = searchParams.get("category");
     const status = searchParams.get("status") || "PUBLISHED";
     const myOnly = searchParams.get("myOnly") === "true";
@@ -48,7 +49,12 @@ export async function GET(request: Request) {
       whereClause.status = status;
     }
 
-    const session = await getSession();
+    let session = null;
+    try {
+      session = await getSession();
+    } catch {
+      session = null;
+    }
 
     if (myOnly || (session?.role === "TRAVEL" && status === "ALL")) {
       let myTravelId = session?.travelId;
@@ -70,39 +76,79 @@ export async function GET(request: Request) {
       whereClause.travelId = travelId;
     }
 
-    if (destination && destination !== "ALL") {
+    const andConditions: any[] = [];
+
+    // Filter Kata Kunci (search input)
+    if (search && search.trim() !== "") {
+      const s = search.trim();
+      andConditions.push({
+        OR: [
+          { name: { contains: s, mode: "insensitive" } },
+          { destination: { contains: s, mode: "insensitive" } },
+          { description: { contains: s, mode: "insensitive" } },
+          { originCity: { contains: s, mode: "insensitive" } },
+          { province: { contains: s, mode: "insensitive" } },
+          { travel: { businessName: { contains: s, mode: "insensitive" } } },
+        ],
+      });
+    }
+
+    // Filter Destinasi (opsional dari paket terdaftar atau ketik manual)
+    if (destination && destination !== "ALL" && destination.trim() !== "") {
       whereClause.destination = {
-        contains: destination,
+        contains: destination.trim(),
+        mode: "insensitive",
       };
     }
 
-    if (originCity && originCity !== "ALL") {
-      whereClause.originCity = {
-        contains: originCity,
-      };
+    // Filter Provinsi / Kota Asal (opsional semua provinsi atau ketik manual)
+    const activeProvince = province || originCity;
+    if (activeProvince && activeProvince !== "ALL" && activeProvince.trim() !== "") {
+      const provTerm = activeProvince.trim();
+      andConditions.push({
+        OR: [
+          { province: { contains: provTerm, mode: "insensitive" } },
+          { originCity: { contains: provTerm, mode: "insensitive" } },
+          { destination: { contains: provTerm, mode: "insensitive" } },
+        ],
+      });
     }
 
-    if (category && category !== "ALL") {
-      whereClause.category = category;
+    // Filter Kategori Wisata (opsional atau ketik manual)
+    if (category && category !== "ALL" && category.trim() !== "") {
+      const catTerm = category.trim();
+      andConditions.push({
+        OR: [
+          { category: { equals: catTerm, mode: "insensitive" } },
+          { category: { contains: catTerm.replace(/\s+/g, "_"), mode: "insensitive" } },
+          { category: { contains: catTerm.replace(/_/g, " "), mode: "insensitive" } },
+          { category: { contains: catTerm, mode: "insensitive" } },
+        ],
+      });
     }
 
+    // Filter Durasi Wisata (opsional atau ketik manual angka/hari)
+    if (duration && duration !== "ALL" && duration.trim() !== "") {
+      const numMatch = duration.match(/\d+/);
+      if (numMatch) {
+        const days = parseInt(numMatch[0]);
+        if (days >= 4 && (duration.includes("+") || duration.toLowerCase().includes("lebih"))) {
+          whereClause.durationDays = { gte: 4 };
+        } else {
+          whereClause.durationDays = days;
+        }
+      }
+    }
+
+    // Price Filter
     if (minPrice || maxPrice) {
       whereClause.price = {};
       if (minPrice) whereClause.price.gte = parseFloat(minPrice);
       if (maxPrice) whereClause.price.lte = parseFloat(maxPrice);
     }
 
-    if (duration && duration !== "ALL") {
-      whereClause.durationDays = parseInt(duration);
-    }
-
-    if (search) {
-      whereClause.OR = [
-        { name: { contains: search } },
-        { destination: { contains: search } },
-        { description: { contains: search } },
-        { travel: { businessName: { contains: search } } },
-      ];
+    if (andConditions.length > 0) {
+      whereClause.AND = andConditions;
     }
 
     const packages = await prisma.package.findMany({
@@ -185,7 +231,20 @@ export async function GET(request: Request) {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
-    return NextResponse.json({ packages: enrichedPackages });
+    // Ambil daftar seluruh destinasi unik dari paket yang sudah terdaftar di database
+    const destRecords = await prisma.package.findMany({
+      select: { destination: true },
+      distinct: ["destination"],
+      orderBy: { destination: "asc" },
+    });
+    const availableDestinations = Array.from(
+      new Set(destRecords.map((d) => d.destination?.trim()).filter(Boolean) as string[])
+    );
+
+    return NextResponse.json({
+      packages: enrichedPackages,
+      destinations: availableDestinations,
+    });
   } catch (error) {
     console.error("Fetch packages error:", error);
     return NextResponse.json(
@@ -197,7 +256,12 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const session = await getSession();
+    let session = null;
+    try {
+      session = await getSession();
+    } catch {
+      session = null;
+    }
     if (!session || (session.role !== "TRAVEL" && session.role !== "ADMIN")) {
       return NextResponse.json(
         { error: "Hanya agen Travel yang diizinkan membuat paket wisata." },

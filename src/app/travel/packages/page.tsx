@@ -790,12 +790,14 @@ export default function TravelPackagesPage() {
                     className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500"
                   >
                     <option value="" disabled>-- Pilih kategori wisata --</option>
-                    <option value="WISATA ALAM">🏔️ Wisata Alam</option>
-                    <option value="WISATA BUDAYA">🏛️ Wisata Budaya & Sejarah</option>
-                    <option value="WISATA KULINER">🍜 Wisata Kuliner</option>
-                    <option value="WISATA BAHARI">🏖️ Wisata Bahari & Pantai</option>
+                    <option value="WISATA_ALAM">🌿 Wisata Alam</option>
+                    <option value="PANTAI">🏖️ Wisata Pantai</option>
+                    <option value="GUNUNG">⛰️ Gunung & Hiking</option>
+                    <option value="KOTA">🏙️ Wisata Kota</option>
+                    <option value="MUSEUM_BUDAYA">🏛️ Museum & Budaya</option>
+                    <option value="RELIGI">🕌 Religi & Sejarah</option>
+                    <option value="KULINER">🍜 Kuliner Nusantara</option>
                     <option value="ADVENTURE">🧗 Petualangan & Trekking</option>
-                    <option value="FAMILY">👨‍👩‍👧 Family & Edukasi</option>
                   </select>
                 </div>
                 <div>
