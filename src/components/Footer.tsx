@@ -122,7 +122,7 @@ export default function Footer() {
             <ul className="space-y-3 text-xs">
               <li className="flex items-center gap-2">
                 <Mail className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                <span>cs@tripku.id</span>
+                <span>tripku797@gmail.com</span>
               </li>
               <li>Senin – Minggu, 08.00 – 20.00 WIB</li>
             </ul>

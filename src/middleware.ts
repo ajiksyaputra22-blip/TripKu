@@ -22,6 +22,10 @@ export async function middleware(request: NextRequest) {
 
   if (!authCheck.allowed && authCheck.redirectUrl) {
     const url = new URL(authCheck.redirectUrl, request.url);
+    if (authCheck.redirectUrl.startsWith("/login") && !url.searchParams.has("redirect")) {
+      const fullPath = pathname + (request.nextUrl.search || "");
+      url.searchParams.set("redirect", fullPath);
+    }
     return NextResponse.redirect(url);
   }
 

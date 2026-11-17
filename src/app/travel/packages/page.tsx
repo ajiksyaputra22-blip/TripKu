@@ -432,11 +432,6 @@ export default function TravelPackagesPage() {
 
                       {/* Bottom Title on Image */}
                       <div className="absolute bottom-3 left-4 right-4 text-white">
-                        <div className="text-[11px] font-bold text-emerald-300 flex items-center gap-1 mb-0.5">
-                          <MapPin className="w-3 h-3" />
-                          <span>{pkg.destination}</span>
-                          {pkg.originCity && <span className="opacity-80">• Dari {pkg.originCity}</span>}
-                        </div>
                         <h3 className="text-base font-extrabold text-white leading-snug line-clamp-1">
                           {pkg.name}
                         </h3>

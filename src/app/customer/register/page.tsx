@@ -1,26 +1,28 @@
 "use client";
 
 import { useState, Suspense } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { AlertCircle } from "lucide-react";
 
 function CustomerRegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectParam = searchParams.get("redirect");
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    
+
     if (password !== confirmPassword) {
       setError("Konfirmasi password tidak cocok.");
       return;
@@ -46,8 +48,9 @@ function CustomerRegisterForm() {
         throw new Error(data.error || "Pendaftaran akun gagal.");
       }
 
-      router.push("/explore");
-      router.refresh();
+      const destination =
+        redirectParam && redirectParam.startsWith("/") ? redirectParam : "/explore";
+      window.location.href = destination;
     } catch (err: any) {
       setError(err.message || "Terjadi kesalahan saat pendaftaran akun.");
     } finally {
@@ -58,12 +61,12 @@ function CustomerRegisterForm() {
   return (
     <div className="min-h-[85vh] flex items-center justify-center bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-6 bg-white p-8 rounded-3xl border border-slate-200 shadow-xl">
-        
+
         <div className="text-center">
           <Link href="/" className="inline-block hover:opacity-90 transition-opacity mb-3">
-            <img 
-              src="/logo.png" 
-              alt="TripKu Logo" 
+            <img
+              src="/logo.png"
+              alt="TripKu Logo"
               className="h-12 w-auto object-contain mx-auto"
             />
           </Link>
@@ -81,6 +84,13 @@ function CustomerRegisterForm() {
             isi data akun Anda
           </span>
         </div>
+
+        {redirectParam && redirectParam.startsWith("/packages") && (
+          <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600" />
+            <span>Setelah mendaftar, Anda akan otomatis diarahkan ke paket wisata pilihan Anda.</span>
+          </div>
+        )}
 
         {error && (
           <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2">
@@ -145,7 +155,7 @@ function CustomerRegisterForm() {
               className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-blue-500 text-slate-900"
             />
           </div>
-          
+
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">
               Konfirmasi Password
@@ -171,6 +181,16 @@ function CustomerRegisterForm() {
             {loading ? "Mendaftarkan..." : "Daftar Akun Sekarang"}
           </button>
         </form>
+
+        <div className="text-center text-xs text-slate-500 pt-4 border-t border-slate-100">
+          Sudah punya akun?{" "}
+          <Link
+            href={redirectParam ? `/login?redirect=${encodeURIComponent(redirectParam)}` : "/login"}
+            className="font-bold text-blue-700 hover:underline"
+          >
+            Masuk ke Akun
+          </Link>
+        </div>
 
       </div>
     </div>

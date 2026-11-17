@@ -9,6 +9,11 @@ function RoleGatewayContent() {
   const searchParams = useSearchParams();
   const errorParam = searchParams.get("error");
   const pendingParam = searchParams.get("pending");
+  const redirectParam = searchParams.get("redirect");
+
+  const buildRegisterHref = (basePath: string) => {
+    return redirectParam ? `${basePath}?redirect=${encodeURIComponent(redirectParam)}` : basePath;
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 py-12 sm:py-16 px-4 sm:px-6 lg:px-8">
@@ -34,6 +39,15 @@ function RoleGatewayContent() {
         </div>
 
         {/* Alerts for errors or pending verification */}
+        {redirectParam && redirectParam.startsWith("/packages") && (
+          <div className="max-w-lg mx-auto p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center gap-2.5">
+            <AlertCircle className="w-4 h-4 shrink-0 text-emerald-600" />
+            <span>
+              Pilih <strong>CUSTOMER / WISATAWAN</strong> untuk memesan paket wisata pilihan Anda. Setelah mendaftar, Anda akan otomatis kembali ke paket tersebut.
+            </span>
+          </div>
+        )}
+
         {errorParam && (
           <div className="max-w-lg mx-auto p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2.5">
             <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
@@ -69,7 +83,7 @@ function RoleGatewayContent() {
 
             <div>
               <Link
-                href="/customer/register"
+                href={buildRegisterHref("/customer/register")}
                 className="block w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs text-center shadow-md shadow-blue-600/20 transition-all"
               >
                 Daftar sebagai Customer
@@ -93,7 +107,7 @@ function RoleGatewayContent() {
 
             <div>
               <Link
-                href="/travel/register"
+                href={buildRegisterHref("/travel/register")}
                 className="block w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs text-center shadow-md shadow-emerald-600/20 transition-all"
               >
                 Daftar sebagai Agensi Travel
@@ -117,7 +131,7 @@ function RoleGatewayContent() {
 
             <div>
               <Link
-                href="/guide/register"
+                href={buildRegisterHref("/guide/register")}
                 className="block w-full py-2.5 px-4 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs text-center shadow-md shadow-teal-600/20 transition-all"
               >
                 Daftar sebagai Tour Guide
@@ -141,13 +155,24 @@ function RoleGatewayContent() {
 
             <div>
               <Link
-                href="/driver/register"
+                href={buildRegisterHref("/driver/register")}
                 className="block w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs text-center shadow-md shadow-indigo-600/20 transition-all"
               >
                 Daftar sebagai Driver
               </Link>
             </div>
           </div>
+        </div>
+
+        {/* Bottom Login Link */}
+        <div className="text-center text-xs text-slate-500 pt-4 border-t border-slate-200">
+          Sudah punya akun?{" "}
+          <Link
+            href={buildRegisterHref("/login")}
+            className="font-bold text-emerald-700 hover:underline"
+          >
+            Masuk ke Akun
+          </Link>
         </div>
 
       </div>

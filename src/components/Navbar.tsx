@@ -65,6 +65,11 @@ export default function Navbar() {
   // Check if user is a partner/admin role (they should only see partner pages)
   const isPartnerOrAdmin = user && ["TRAVEL", "GUIDE", "DRIVER", "ADMIN"].includes(user.role);
 
+  // Redirect-aware login/register links for package pages
+  const isPackageRoute = pathname.startsWith("/packages");
+  const loginHref = isPackageRoute ? `/login?redirect=${encodeURIComponent(pathname)}` : "/login";
+  const authHref = isPackageRoute ? `/auth?redirect=${encodeURIComponent(pathname)}` : "/auth";
+
   return (
     <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -352,13 +357,13 @@ export default function Navbar() {
               ) : (
                 <div className="flex items-center gap-2">
                   <Link
-                    href="/login"
+                    href={loginHref}
                     className="px-3.5 py-1.5 text-xs font-bold text-slate-700 hover:text-emerald-600 rounded-xl hover:bg-slate-100 transition-colors"
                   >
                     Masuk
                   </Link>
                   <Link
-                    href="/auth"
+                    href={authHref}
                     className="px-4 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-xl shadow-sm shadow-emerald-600/25 transition-all hover:shadow-md"
                   >
                     Daftar
@@ -470,8 +475,27 @@ export default function Navbar() {
               >
                 Dashboard
               </Link>
-
             </>
+          )}
+
+          {/* Mobile Masuk/Daftar buttons for guests */}
+          {!user && (
+            <div className="flex gap-2 pt-2 border-t border-slate-100">
+              <Link
+                href={loginHref}
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex-1 text-center px-3 py-2.5 rounded-xl text-sm font-bold text-slate-700 border border-slate-200 hover:bg-slate-50"
+              >
+                Masuk
+              </Link>
+              <Link
+                href={authHref}
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex-1 text-center px-3 py-2.5 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700"
+              >
+                Daftar
+              </Link>
+            </div>
           )}
         </div>
       )}

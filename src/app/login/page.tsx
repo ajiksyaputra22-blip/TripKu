@@ -50,8 +50,11 @@ function UnifiedLoginForm() {
         return;
       }
 
-      // Gunakan redirect param jika ada, atau arahkan sesuai role
-      const destination = redirectParam || ROLE_REDIRECT[role];
+      // Gunakan redirect param hanya untuk CUSTOMER; role lain selalu ke dashboard
+      const destination =
+        role === "CUSTOMER" && redirectParam && redirectParam.startsWith("/")
+          ? redirectParam
+          : ROLE_REDIRECT[role];
       window.location.href = destination;
     } catch (err: any) {
       setError(err.message || "Email atau password salah.");
@@ -67,9 +70,9 @@ function UnifiedLoginForm() {
         {/* Brand Header */}
         <div className="text-center">
           <Link href="/" className="inline-block hover:opacity-90 transition-opacity mb-4">
-            <img 
-              src="/logo.png" 
-              alt="TripKu Logo" 
+            <img
+              src="/logo.png"
+              alt="TripKu Logo"
               className="h-14 sm:h-16 w-auto object-contain mx-auto"
             />
           </Link>
@@ -88,6 +91,13 @@ function UnifiedLoginForm() {
             <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
               <span>{error}</span>
+            </div>
+          )}
+
+          {redirectParam && redirectParam.startsWith("/packages") && (
+            <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600" />
+              <span>Masuk ke akun Anda untuk melanjutkan pemesanan paket wisata pilihan Anda.</span>
             </div>
           )}
 
@@ -145,7 +155,10 @@ function UnifiedLoginForm() {
 
           <div className="text-center text-xs text-slate-500 pt-4 border-t border-slate-100">
             Belum punya akun?{" "}
-            <Link href="/auth" className="font-bold text-emerald-700 hover:underline">
+            <Link
+              href={redirectParam ? `/auth?redirect=${encodeURIComponent(redirectParam)}` : "/auth"}
+              className="font-bold text-emerald-700 hover:underline"
+            >
               Daftar akun baru
             </Link>
           </div>

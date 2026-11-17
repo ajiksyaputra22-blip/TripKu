@@ -2,6 +2,7 @@ import Link from "next/link";
 import prisma from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { formatRupiah, formatDate } from "@/lib/utils";
+import { getSession } from "@/lib/auth";
 import {
   MapPin,
   Clock,
@@ -39,6 +40,8 @@ export default async function PackageDetailPage({ params }: PageProps) {
   if (!pkg) {
     notFound();
   }
+
+  const session = await getSession();
 
   // Reviews hanya untuk paket ini (via trip.packageId) — TIDAK ada fallback ke travel
   const reviews = await prisma.review.findMany({
@@ -307,9 +310,15 @@ export default async function PackageDetailPage({ params }: PageProps) {
                   );
                 }
 
+                const bookUrl = `/packages/${pkg.slug || pkg.id}/book`;
+                const ctaHref =
+                  session?.role === "CUSTOMER"
+                    ? bookUrl
+                    : `/login?redirect=${encodeURIComponent(bookUrl)}`;
+
                 return (
                   <Link
-                    href={`/packages/${pkg.slug || pkg.id}/book`}
+                    href={ctaHref}
                     className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md shadow-emerald-600/30 transition-all flex items-center justify-center gap-2"
                   >
                     <span>Pesan Sekarang (Book Now)</span>
