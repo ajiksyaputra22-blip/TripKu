@@ -118,6 +118,7 @@ export default function TravelProfilePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setSuccess(true);
+      window.dispatchEvent(new Event("auth-change"));
       setTimeout(() => router.push("/travel/dashboard"), 1500);
     } catch (err: any) {
       setError(err.message || "Gagal menyimpan profil.");

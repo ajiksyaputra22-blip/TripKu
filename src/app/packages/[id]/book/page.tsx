@@ -181,7 +181,10 @@ export default function BookingPage() {
     );
   }
 
-  const totalPrice = pkg.price * participantCount;
+  const packageSubtotal = pkg.price * participantCount;
+  const adminFeePerPerson = 5000;
+  const adminFeeTotal = adminFeePerPerson * participantCount;
+  const totalPrice = packageSubtotal + adminFeeTotal;
 
   return (
     <div className="min-h-screen bg-slate-50 py-8 sm:py-12">
@@ -576,16 +579,28 @@ export default function BookingPage() {
               {/* Price Calculation */}
               <div className="border-t border-slate-100 pt-3 space-y-2 text-xs text-slate-600">
                 <div className="flex justify-between">
-                  <span>Harga per Orang</span>
+                  <span>Harga Paket per Orang</span>
                   <span className="font-medium text-slate-900">{formatRupiah(pkg.price)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Jumlah Peserta</span>
                   <span className="font-medium text-slate-900">{participantCount} Orang</span>
                 </div>
-                <div className="border-t border-slate-200 pt-2 flex justify-between items-baseline">
-                  <span className="font-bold text-slate-900 text-sm">Total Tagihan</span>
-                  <span className="font-extrabold text-slate-900 text-base">
+                <div className="flex justify-between">
+                  <span>Subtotal Harga Paket</span>
+                  <span className="font-semibold text-slate-900">{formatRupiah(packageSubtotal)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Biaya Admin per Orang</span>
+                  <span className="font-medium text-slate-900">{formatRupiah(adminFeePerPerson)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Total Biaya Admin</span>
+                  <span className="font-semibold text-slate-900">{formatRupiah(adminFeeTotal)}</span>
+                </div>
+                <div className="border-t border-slate-200 pt-2 flex justify-between items-baseline font-bold">
+                  <span className="text-slate-900 text-xs">Total Pembayaran</span>
+                  <span className="text-sm font-extrabold text-emerald-600">
                     {formatRupiah(totalPrice)}
                   </span>
                 </div>

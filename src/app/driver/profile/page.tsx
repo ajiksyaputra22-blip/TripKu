@@ -167,6 +167,7 @@ export default function DriverProfilePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setSuccess(true);
+      window.dispatchEvent(new Event("auth-change"));
       setTimeout(() => router.push("/driver/dashboard"), 1500);
     } catch (err: any) {
       setError(err.message || "Gagal menyimpan profil.");

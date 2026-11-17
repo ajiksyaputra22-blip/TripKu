@@ -94,6 +94,7 @@ export default function CustomerProfilePage() {
       if (!res.ok) throw new Error(data.error || "Gagal menyimpan profil");
 
       setSuccess(true);
+      window.dispatchEvent(new Event("auth-change"));
       // Automatically hide success message after 3 seconds
       setTimeout(() => setSuccess(false), 3000);
 

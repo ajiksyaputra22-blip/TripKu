@@ -42,6 +42,15 @@ export default function Navbar() {
 
   useEffect(() => {
     fetchSession();
+
+    const handleAuthChange = () => {
+      fetchSession();
+    };
+
+    window.addEventListener("auth-change", handleAuthChange);
+    return () => {
+      window.removeEventListener("auth-change", handleAuthChange);
+    };
   }, [pathname]);
 
   const handleLogout = async () => {

@@ -11,6 +11,9 @@ export async function GET() {
 
     let travel = await prisma.travel.findUnique({
       where: { userId: session.userId },
+      include: {
+        user: { select: { avatarUrl: true } },
+      },
     });
 
     if (!travel) {
@@ -22,7 +25,30 @@ export async function GET() {
           businessName: user?.name || "Travel Agency Baru",
           verificationStatus: "PENDING",
         },
+        include: {
+          user: { select: { avatarUrl: true } },
+        },
       });
+    }
+
+    // Sinkronisasi logoUrl dari user.avatarUrl jika travel.logoUrl masih kosong
+    if (!travel.logoUrl && travel.user?.avatarUrl) {
+      travel = await prisma.travel.update({
+        where: { id: travel.id },
+        data: { logoUrl: travel.user.avatarUrl },
+        include: {
+          user: { select: { avatarUrl: true } },
+        },
+      });
+    }
+
+    // Sinkronisasi user.avatarUrl dari travel.logoUrl jika user.avatarUrl masih kosong
+    if (travel.logoUrl && !travel.user?.avatarUrl) {
+      await prisma.user.update({
+        where: { id: session.userId },
+        data: { avatarUrl: travel.logoUrl },
+      });
+      travel.user = { avatarUrl: travel.logoUrl };
     }
 
     // Auto-clean description dan pastikan siupUrl terisi jika ada tag lama
@@ -36,6 +62,9 @@ export async function GET() {
         data: {
           description: cleanedDesc || null,
           ...(newSiup && !travel.siupUrl ? { siupUrl: newSiup } : {}),
+        },
+        include: {
+          user: { select: { avatarUrl: true } },
         },
       });
     }
@@ -83,11 +112,15 @@ export async function PATCH(req: Request) {
       },
     });
 
-    // Also update the User name if businessName changed
-    if (businessName) {
+    // Also update the User name and avatarUrl (agar foto profil muncul di navbar dan seluruh sistem)
+    const userUpdateData: any = {};
+    if (businessName) userUpdateData.name = businessName;
+    if (logoUrl !== undefined) userUpdateData.avatarUrl = logoUrl;
+
+    if (Object.keys(userUpdateData).length > 0) {
       await prisma.user.update({
         where: { id: session.userId },
-        data: { name: businessName },
+        data: userUpdateData,
       });
     }
 

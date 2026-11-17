@@ -24,5 +24,24 @@ export async function GET() {
     },
   });
 
-  return NextResponse.json({ user });
+  if (!user) {
+    return NextResponse.json({ user: null });
+  }
+
+  // Pastikan avatarUrl selalu terisi jika user travel memiliki logoUrl di travelProfile
+  const resolvedAvatarUrl = user.avatarUrl || user.travelProfile?.logoUrl || null;
+
+  if (!user.avatarUrl && user.travelProfile?.logoUrl) {
+    prisma.user.update({
+      where: { id: user.id },
+      data: { avatarUrl: user.travelProfile.logoUrl },
+    }).catch((err) => console.error("Sync avatarUrl to user error:", err));
+  }
+
+  return NextResponse.json({
+    user: {
+      ...user,
+      avatarUrl: resolvedAvatarUrl,
+    },
+  });
 }
