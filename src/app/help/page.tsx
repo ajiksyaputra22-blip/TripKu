@@ -124,21 +124,21 @@ export default function HelpPage() {
               <Mail className="w-5 h-5 text-emerald-400 shrink-0" />
               <div>
                 <div className="text-xs font-bold">Email</div>
-                <div className="text-[11px] text-slate-400">cs@tripku.id</div>
+                <div className="text-[11px] text-slate-400">tripku797@gmail.com</div>
               </div>
             </a>
-            <a href="https://wa.me/6281264683665" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 rounded-xl bg-white/8 border border-white/10 hover:bg-white/12 transition-colors">
+            <a href="https://wa.me/62895345428383" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 rounded-xl bg-white/8 border border-white/10 hover:bg-white/12 transition-colors">
               <MessageCircle className="w-5 h-5 text-emerald-400 shrink-0" />
               <div>
                 <div className="text-xs font-bold">WhatsApp</div>
-                <div className="text-[11px] text-slate-400">+62 812 6468 3665</div>
+                <div className="text-[11px] text-slate-400">+62 895 3454 28383</div>
               </div>
             </a>
             <div className="flex items-center gap-3 p-4 rounded-xl bg-white/8 border border-white/10">
               <Clock className="w-5 h-5 text-emerald-400 shrink-0" />
               <div>
                 <div className="text-xs font-bold">Jam Layanan</div>
-                <div className="text-[11px] text-slate-400">Senin – Minggu, 08.00–20.00 WIB</div>
+                <div className="text-[11px] text-slate-400">Senin – Jum'at, 08.00–17.00 WIB</div>
               </div>
             </div>
           </div>

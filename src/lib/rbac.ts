@@ -78,13 +78,20 @@ export function isAuthorizedRoute(pathname: string, user: SessionPayload | null)
   }
 
   // For CUSTOMER and Guests (Not logged in):
-  // Public routes allowed:
+  // Public routes allowed (including all footer and informational pages):
   if (
     pathname === "/" ||
     pathname.startsWith("/explore") ||
-    pathname.startsWith("/packages") && !pathname.includes("/book") ||
+    (pathname.startsWith("/packages") && !pathname.includes("/book")) ||
     pathname.startsWith("/compare") ||
     pathname.startsWith("/auth") ||
+    pathname.startsWith("/about") ||
+    pathname.startsWith("/blog") ||
+    pathname.startsWith("/careers") ||
+    pathname.startsWith("/help") ||
+    pathname.startsWith("/payment-methods") ||
+    pathname.startsWith("/privacy") ||
+    pathname.startsWith("/terms") ||
     pathname.includes("/login") ||
     pathname.includes("/register")
   ) {

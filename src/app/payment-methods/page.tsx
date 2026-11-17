@@ -6,13 +6,6 @@ export const metadata = {
   description: "Panduan lengkap metode pembayaran yang tersedia di TripKu, termasuk transfer bank dan skema DP.",
 };
 
-const banks = [
-  { name: "Bank BCA", no: "1234567890", holder: "PT TripKu Indonesia" },
-  { name: "Bank Mandiri", no: "0987654321", holder: "PT TripKu Indonesia" },
-  { name: "Bank BRI", no: "1122334455", holder: "PT TripKu Indonesia" },
-  { name: "Bank BNI", no: "5566778899", holder: "PT TripKu Indonesia" },
-];
-
 const steps = [
   {
     num: "01",
@@ -71,26 +64,6 @@ export default function PaymentMethodsPage() {
                 <p className="text-xs text-slate-500 leading-relaxed">{s.desc}</p>
               </div>
             ))}
-          </div>
-        </div>
-
-        {/* Bank Accounts */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-emerald-600" />
-            <h2 className="text-sm font-bold text-slate-800">Rekening Bank yang Didukung</h2>
-          </div>
-          <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {banks.map((b) => (
-              <div key={b.name} className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                <div className="text-xs font-bold text-slate-900 mb-1">{b.name}</div>
-                <div className="font-mono text-sm font-bold text-emerald-700">{b.no}</div>
-                <div className="text-[11px] text-slate-500 mt-0.5">a.n. {b.holder}</div>
-              </div>
-            ))}
-          </div>
-          <div className="px-6 pb-5 text-[11px] text-slate-400">
-            * Nomor rekening di atas adalah contoh. Rekening tujuan aktual ditampilkan saat checkout berdasarkan agensi travel yang Anda pilih.
           </div>
         </div>
 

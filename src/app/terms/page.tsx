@@ -84,8 +84,8 @@ Kami berkomitmen untuk menindaklanjuti setiap pengaduan yang masuk melalui kanal
     title: "10. Hubungi Kami",
     content: `Untuk pertanyaan mengenai syarat dan ketentuan ini, hubungi kami di:
 
-Email: cs@tripku.id
-Jam layanan: Senin – Minggu, 08.00 – 20.00 WIB`,
+Email: tripku797@gmail.com
+Jam layanan: Senin – Jum'at, 08.00 – 17.00 WIB`,
   },
 ];
 
@@ -104,7 +104,7 @@ export default function TermsPage() {
             Syarat &amp; Ketentuan
           </h1>
           <p className="text-slate-500 text-sm">
-            Terakhir diperbarui: Oktober 2026
+            Terakhir diperbarui: November 2026
           </p>
         </div>
       </div>

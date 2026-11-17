@@ -64,8 +64,8 @@ Untuk mengajukan permintaan, hubungi kami di cs@tripku.id.`,
     title: "8. Hubungi Kami",
     content: `Jika Anda memiliki pertanyaan atau kekhawatiran mengenai kebijakan privasi ini, silakan hubungi kami di:
 
-Email: cs@tripku.id
-Jam layanan: Senin – Minggu, 08.00 – 20.00 WIB`,
+Email: tripku797@gmail.com
+Jam layanan: Senin – Jum'at, 08.00 – 17.00 WIB`,
   },
 ];
 
