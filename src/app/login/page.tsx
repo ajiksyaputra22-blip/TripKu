@@ -136,6 +136,9 @@ function UnifiedLoginForm() {
               disabled={loading}
               className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-sm shadow-md shadow-emerald-600/30 transition-all flex items-center justify-center gap-2"
             >
+              {loading && (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+              )}
               {loading ? "Memverifikasi..." : "Masuk ke Akun"}
             </button>
           </form>

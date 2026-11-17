@@ -48,6 +48,7 @@ export default function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [markingAll, setMarkingAll] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -93,9 +94,14 @@ export default function NotificationBell() {
   };
 
   const markAllRead = async () => {
-    await fetch("/api/notifications", { method: "PATCH", body: JSON.stringify({}) });
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    setUnreadCount(0);
+    setMarkingAll(true);
+    try {
+      await fetch("/api/notifications", { method: "PATCH", body: JSON.stringify({}) });
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+    } finally {
+      setMarkingAll(false);
+    }
   };
 
   const markOneRead = async (id: string) => {
@@ -147,11 +153,16 @@ export default function NotificationBell() {
               {unreadCount > 0 && (
                 <button
                   onClick={markAllRead}
+                  disabled={markingAll}
                   title="Tandai semua sudah dibaca"
-                  className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-800 px-2 py-1 rounded-lg hover:bg-emerald-50 transition-colors"
+                  className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-800 px-2 py-1 rounded-lg hover:bg-emerald-50 transition-colors disabled:opacity-50"
                 >
-                  <CheckCheck className="w-3.5 h-3.5" />
-                  Baca semua
+                  {markingAll ? (
+                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-emerald-600" />
+                  ) : (
+                    <CheckCheck className="w-3.5 h-3.5" />
+                  )}
+                  <span>{markingAll ? "Menandai..." : "Baca semua"}</span>
                 </button>
               )}
               <button

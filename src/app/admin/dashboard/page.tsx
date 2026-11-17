@@ -18,6 +18,7 @@ export default function AdminDashboardPage() {
   const [usersData, setUsersData] = useState<any>(null);
   const [verifications, setVerifications] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -45,6 +46,7 @@ export default function AdminDashboardPage() {
   }, []);
 
   const handleVerifyTravel = async (travelId: string, action: "APPROVED" | "REJECTED") => {
+    setVerifyingId(travelId);
     try {
       const res = await fetch("/api/admin/verifications", {
         method: "POST",
@@ -70,10 +72,13 @@ export default function AdminDashboardPage() {
     } catch (e) {
       console.error("handleVerifyTravel network error:", e);
       toast.error("Koneksi gagal. Periksa jaringan Anda.");
+    } finally {
+      setVerifyingId(null);
     }
   };
 
   const handleVerifyWorker = async (workerId: string, action: "APPROVED" | "REJECTED") => {
+    setVerifyingId(workerId);
     try {
       const res = await fetch("/api/admin/verifications", {
         method: "POST",
@@ -99,6 +104,8 @@ export default function AdminDashboardPage() {
     } catch (e) {
       console.error("handleVerifyWorker network error:", e);
       toast.error("Koneksi gagal. Periksa jaringan Anda.");
+    } finally {
+      setVerifyingId(null);
     }
   };
 
@@ -247,18 +254,28 @@ export default function AdminDashboardPage() {
                             {t.verificationStatus !== "APPROVED" && (
                               <button
                                 onClick={() => handleVerifyTravel(t.id, "APPROVED")}
-                                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1 shadow-xs"
+                                disabled={verifyingId === t.id}
+                                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-[11px] flex items-center gap-1 shadow-xs"
                               >
-                                <Check className="w-3.5 h-3.5" />
+                                {verifyingId === t.id ? (
+                                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" />
+                                ) : (
+                                  <Check className="w-3.5 h-3.5" />
+                                )}
                                 <span>Setujui</span>
                               </button>
                             )}
                             {t.verificationStatus !== "REJECTED" && (
                               <button
                                 onClick={() => handleVerifyTravel(t.id, "REJECTED")}
-                                className="px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 font-bold text-[11px] flex items-center gap-1"
+                                disabled={verifyingId === t.id}
+                                className="px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 disabled:opacity-50 disabled:cursor-not-allowed font-bold text-[11px] flex items-center gap-1"
                               >
-                                <X className="w-3.5 h-3.5" />
+                                {verifyingId === t.id ? (
+                                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-rose-700" />
+                                ) : (
+                                  <X className="w-3.5 h-3.5" />
+                                )}
                                 <span>Tolak</span>
                               </button>
                             )}
@@ -372,17 +389,27 @@ export default function AdminDashboardPage() {
                             {!w.isAvailable && (
                               <button
                                 onClick={() => handleVerifyWorker(w.id, "APPROVED")}
-                                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1 shadow-xs"
+                                disabled={verifyingId === w.id}
+                                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-[11px] flex items-center gap-1 shadow-xs"
                               >
-                                <Check className="w-3.5 h-3.5" />
+                                {verifyingId === w.id ? (
+                                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" />
+                                ) : (
+                                  <Check className="w-3.5 h-3.5" />
+                                )}
                                 <span>Setujui</span>
                               </button>
                             )}
                             <button
                               onClick={() => handleVerifyWorker(w.id, "REJECTED")}
-                              className="px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 font-bold text-[11px] flex items-center gap-1"
+                              disabled={verifyingId === w.id}
+                              className="px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 disabled:opacity-50 disabled:cursor-not-allowed font-bold text-[11px] flex items-center gap-1"
                             >
-                              <X className="w-3.5 h-3.5" />
+                              {verifyingId === w.id ? (
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-rose-700" />
+                              ) : (
+                                <X className="w-3.5 h-3.5" />
+                              )}
                               <span>Tolak / Suspend</span>
                             </button>
                           </div>

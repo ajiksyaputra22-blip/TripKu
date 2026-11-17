@@ -53,7 +53,10 @@ export default function Navbar() {
     };
   }, [pathname]);
 
+  const [loggingOut, setLoggingOut] = useState(false);
+
   const handleLogout = async () => {
+    setLoggingOut(true);
     await fetch("/api/auth/logout", { method: "POST" });
     setUser(null);
     window.location.href = "/";
@@ -331,10 +334,15 @@ export default function Navbar() {
                         <div className="border-t border-slate-100 mt-1 pt-1">
                           <button
                             onClick={handleLogout}
-                            className="w-full text-left px-4 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 flex items-center gap-2"
+                            disabled={loggingOut}
+                            className="w-full text-left px-4 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 flex items-center gap-2 disabled:opacity-60"
                           >
-                            <LogOut className="w-3.5 h-3.5" />
-                            Keluar (Logout)
+                            {loggingOut ? (
+                              <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-rose-600" />
+                            ) : (
+                              <LogOut className="w-3.5 h-3.5" />
+                            )}
+                            {loggingOut ? "Keluar..." : "Keluar (Logout)"}
                           </button>
                         </div>
                       </div>

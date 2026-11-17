@@ -470,18 +470,26 @@ export default function TravelPaymentsPage() {
                   type="button"
                   disabled={actionProcessing}
                   onClick={() => handleVerifyAction(selectedPayment.id, "REJECT")}
-                  className="flex-1 py-2.5 px-3 rounded-xl border border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  className="flex-1 py-2.5 px-3 rounded-xl border border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <X className="w-4 h-4" />
+                  {actionProcessing ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-rose-700" />
+                  ) : (
+                    <X className="w-4 h-4" />
+                  )}
                   <span>Tolak Pembayaran</span>
                 </button>
                 <button
                   type="button"
                   disabled={actionProcessing}
                   onClick={() => handleVerifyAction(selectedPayment.id, "VERIFY")}
-                  className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/30 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                  className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/30 flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <Check className="w-4 h-4" />
+                  {actionProcessing ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                  ) : (
+                    <Check className="w-4 h-4" />
+                  )}
                   <span>Setujui Pembayaran</span>
                 </button>
               </div>

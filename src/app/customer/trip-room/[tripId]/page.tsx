@@ -463,9 +463,13 @@ export default function TripRoomPage() {
                 <button
                   type="submit"
                   disabled={posting}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-all"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-all"
                 >
-                  <Send className="w-3.5 h-3.5" />
+                  {posting ? (
+                    <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
+                  ) : (
+                    <Send className="w-3.5 h-3.5" />
+                  )}
                   <span>{posting ? "Memposting..." : "Publikasikan ke Trip Room"}</span>
                 </button>
               </div>
@@ -611,9 +615,13 @@ export default function TripRoomPage() {
                   <button
                     type="submit"
                     disabled={submittingCp}
-                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all"
+                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all"
                   >
-                    <MapPin className="w-3.5 h-3.5" />
+                    {submittingCp ? (
+                      <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
+                    ) : (
+                      <MapPin className="w-3.5 h-3.5" />
+                    )}
                     <span>{submittingCp ? "Mengirim Laporan..." : "Laporkan Sekarang"}</span>
                   </button>
                 </div>

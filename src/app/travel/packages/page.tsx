@@ -948,9 +948,12 @@ export default function TravelPackagesPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-xs transition-all"
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold shadow-xs transition-all flex items-center gap-2"
                 >
-                  {submitting ? "Menyimpan..." : "Simpan Paket Wisata"}
+                  {submitting && (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                  )}
+                  <span>{submitting ? "Menyimpan..." : "Simpan Paket Wisata"}</span>
                 </button>
               </div>
             </form>

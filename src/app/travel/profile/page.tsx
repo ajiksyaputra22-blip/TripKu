@@ -307,7 +307,10 @@ export default function TravelProfilePage() {
             <Link href="/travel/dashboard" className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50">
               Batal
             </Link>
-            <button type="submit" disabled={saving} className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm flex items-center gap-2 transition-all shadow-md disabled:bg-slate-400">
+            <button type="submit" disabled={saving} className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm flex items-center gap-2 transition-all shadow-md disabled:bg-slate-400 disabled:cursor-not-allowed">
+              {saving && (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+              )}
               {saving ? "Menyimpan..." : "Simpan Profil"}
             </button>
           </div>

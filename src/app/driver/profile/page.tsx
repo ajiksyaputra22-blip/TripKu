@@ -441,7 +441,10 @@ export default function DriverProfilePage() {
 
           <div className="flex items-center gap-3">
             <button type="submit" disabled={saving}
-              className="flex-1 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2">
+              className="flex-1 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 disabled:cursor-not-allowed">
+              {saving && (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+              )}
               {saving ? "Menyimpan..." : (isCompleted ? "Simpan Perubahan Profil" : "Simpan & Lengkapi Profil")}
             </button>
           </div>

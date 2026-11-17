@@ -1012,8 +1012,11 @@ export default function GuideDashboardPage() {
                     </button>
                     {!attendanceViewOnly && (
                       <button onClick={handleSaveAttendance} disabled={savingAttendance || attendanceData.length === 0}
-                        className={`flex-1 py-2 rounded-xl text-white text-xs font-bold shadow-xs transition-all disabled:bg-slate-300 ${attendanceType === "DEPARTURE" ? "bg-blue-600 hover:bg-blue-700" : "bg-purple-600 hover:bg-purple-700"}`}>
-                        {savingAttendance ? "Menyimpan..." : "Simpan Absensi"}
+                        className={`flex-1 py-2 rounded-xl text-white text-xs font-bold shadow-xs transition-all disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 ${attendanceType === "DEPARTURE" ? "bg-blue-600 hover:bg-blue-700" : "bg-purple-600 hover:bg-purple-700"}`}>
+                        {savingAttendance && (
+                          <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
+                        )}
+                        <span>{savingAttendance ? "Menyimpan..." : "Simpan Absensi"}</span>
                       </button>
                     )}
                   </div>
@@ -1086,9 +1089,12 @@ export default function GuideDashboardPage() {
                       <button
                         type="submit"
                         disabled={submittingNegotiation}
-                        className="flex-1 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-xs disabled:opacity-50"
+                        className="flex-1 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-xs font-bold shadow-xs disabled:opacity-50 flex items-center justify-center gap-1.5"
                       >
-                        {submittingNegotiation ? "Mengirim..." : "Kirim Tawaran"}
+                        {submittingNegotiation && (
+                          <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
+                        )}
+                        <span>{submittingNegotiation ? "Mengirim..." : "Kirim Tawaran"}</span>
                       </button>
                     </div>
                   </form>

@@ -659,9 +659,12 @@ export default function DriverDashboardPage() {
                       <button
                         type="submit"
                         disabled={submittingNegotiation}
-                        className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs disabled:opacity-50"
+                        className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-xs font-bold shadow-xs disabled:opacity-50 flex items-center justify-center gap-1.5"
                       >
-                        {submittingNegotiation ? "Mengirim..." : "Kirim Tawaran"}
+                        {submittingNegotiation && (
+                          <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
+                        )}
+                        <span>{submittingNegotiation ? "Mengirim..." : "Kirim Tawaran"}</span>
                       </button>
                     </div>
                   </form>
@@ -919,10 +922,14 @@ export default function DriverDashboardPage() {
                               type="button"
                               disabled={submittingNextPoint}
                               onClick={() => handleAdvanceToNextPoint(trip.id, nextPointName)}
-                              className="flex-1 py-3 px-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-extrabold shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+                              className="flex-1 py-3 px-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-extrabold shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                               title={`Melaju ke titik berikutnya: ${nextPointName}`}
                             >
-                              <Navigation className="w-4 h-4" />
+                              {submittingNextPoint ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                              ) : (
+                                <Navigation className="w-4 h-4" />
+                              )}
                               <span>
                                 {submittingNextPoint ? "Memproses Titik..." : `Titik Berikutnya: ${nextPointName} ➔`}
                               </span>

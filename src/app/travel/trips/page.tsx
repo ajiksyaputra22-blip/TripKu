@@ -496,17 +496,25 @@ export default function TravelTripsPage() {
                                               <button
                                                 onClick={() => handleTravelRespond(a.id, "TRAVEL_ACCEPT_NEGOTIATION")}
                                                 disabled={respondingId === a.id}
-                                                className="flex-1 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white text-[11px] font-bold flex items-center justify-center gap-1 transition-colors"
+                                                className="flex-1 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white text-[11px] font-bold flex items-center justify-center gap-1 transition-colors disabled:cursor-not-allowed"
                                               >
-                                                <Check className="w-3 h-3" />
+                                                {respondingId === a.id ? (
+                                                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" />
+                                                ) : (
+                                                  <Check className="w-3 h-3" />
+                                                )}
                                                 Setujui Tawaran
                                               </button>
                                               <button
                                                 onClick={() => handleTravelRespond(a.id, "TRAVEL_REJECT")}
                                                 disabled={respondingId === a.id}
-                                                className="py-1.5 px-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 text-[11px] font-bold flex items-center justify-center gap-1 transition-colors"
+                                                className="py-1.5 px-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 text-[11px] font-bold flex items-center justify-center gap-1 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                                               >
-                                                <X className="w-3 h-3" />
+                                                {respondingId === a.id ? (
+                                                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-rose-700" />
+                                                ) : (
+                                                  <X className="w-3 h-3" />
+                                                )}
                                               </button>
                                             </div>
                                           </div>
@@ -607,8 +615,11 @@ export default function TravelTripsPage() {
               <button
                 onClick={handlePayFee}
                 disabled={!feeProofFile || payingFee}
-                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white text-xs font-bold flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white text-xs font-bold flex items-center justify-center gap-2 disabled:cursor-not-allowed"
               >
+                {payingFee ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                ) : null}
                 {payingFee ? "Mengupload..." : "Kirim Bukti Bayar"}
               </button>
             </div>

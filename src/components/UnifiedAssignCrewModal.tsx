@@ -482,8 +482,12 @@ export default function UnifiedAssignCrewModal({
                   disabled={submitting || !selectedGuideId}
                   className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 disabled:opacity-50 text-slate-950 font-black text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer"
                 >
+                  {submitting ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-slate-950" />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4" />
+                  )}
                   <span>{submitting ? "Menugaskan..." : "Konfirmasi & Tugaskan Tour Guide"}</span>
-                  <CheckCircle2 className="w-4 h-4" />
                 </button>
               ) : (
                 <button
@@ -673,6 +677,9 @@ export default function UnifiedAssignCrewModal({
                   disabled={submitting || (needDriverOnly ? !selectedDriverId : (!selectedGuideId && !selectedDriverId))}
                   className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 disabled:opacity-50 text-slate-950 font-black text-xs shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                 >
+                  {submitting && (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-slate-950" />
+                  )}
                   {submitting ? "Menugaskan..." : needDriverOnly ? "Konfirmasi & Tugaskan Driver" : "Konfirmasi & Tugaskan Kru"}
                 </button>
               </div>

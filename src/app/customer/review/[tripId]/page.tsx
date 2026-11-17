@@ -264,10 +264,14 @@ export default function CustomerReviewPage() {
             <button
               onClick={handleConfirmTrip}
               disabled={confirming}
-              className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 transition-all"
+              className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 transition-all"
             >
-              {confirming ? "Memproses..." : "Ya, Perjalanan Sudah Selesai"}
-              <CheckCircle2 className="w-4 h-4" />
+              {confirming ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4" />
+              )}
+              <span>{confirming ? "Memproses..." : "Ya, Perjalanan Sudah Selesai"}</span>
             </button>
             <Link href="/customer/bookings" className="block text-center text-xs text-slate-500 hover:text-slate-700 mt-3 font-semibold">
               Kembali ke Riwayat Pemesanan
@@ -309,10 +313,14 @@ export default function CustomerReviewPage() {
               <button
                 onClick={handleSubmitDestinationReview}
                 disabled={submitting || !destinationComment.trim()}
-                className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-bold text-xs shadow-md flex items-center justify-center gap-2 transition-all"
+                className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs shadow-md flex items-center justify-center gap-2 transition-all"
               >
-                {submitting ? "Menyimpan..." : "Simpan & Lanjut"}
-                <ArrowRight className="w-4 h-4" />
+                {submitting ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                ) : (
+                  <ArrowRight className="w-4 h-4" />
+                )}
+                <span>{submitting ? "Menyimpan..." : "Simpan & Lanjut"}</span>
               </button>
             </div>
           </div>
@@ -354,10 +362,14 @@ export default function CustomerReviewPage() {
               <button
                 onClick={() => handleSubmitWorkerReview(guide.id, "GUIDE", guideRating, guideComment)}
                 disabled={submitting}
-                className="w-full py-3 px-4 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:bg-slate-300 text-white font-bold text-xs shadow-md flex items-center justify-center gap-2 transition-all"
+                className="w-full py-3 px-4 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs shadow-md flex items-center justify-center gap-2 transition-all"
               >
-                {submitting ? "Menyimpan..." : "Simpan & Lanjut"}
-                <ArrowRight className="w-4 h-4" />
+                {submitting ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                ) : (
+                  <ArrowRight className="w-4 h-4" />
+                )}
+                <span>{submitting ? "Menyimpan..." : "Simpan & Lanjut"}</span>
               </button>
             </div>
           </div>
@@ -399,10 +411,14 @@ export default function CustomerReviewPage() {
               <button
                 onClick={() => handleSubmitWorkerReview(driver.id, "DRIVER", driverRating, driverComment)}
                 disabled={submitting}
-                className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold text-xs shadow-md flex items-center justify-center gap-2 transition-all"
+                className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs shadow-md flex items-center justify-center gap-2 transition-all"
               >
-                {submitting ? "Menyimpan..." : "Selesaikan Review"}
-                <CheckCircle2 className="w-4 h-4" />
+                {submitting ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4" />
+                )}
+                <span>{submitting ? "Menyimpan..." : "Selesaikan Review"}</span>
               </button>
             </div>
           </div>

@@ -586,7 +586,11 @@ export default function CustomerBookingDetailPage() {
                   disabled={uploading || !selectedFile}
                   className="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 transition-all"
                 >
-                  <Upload className="w-3.5 h-3.5" />
+                  {uploading ? (
+                    <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
+                  ) : (
+                    <Upload className="w-3.5 h-3.5" />
+                  )}
                   <span>{uploading ? "Mengunggah..." : needsDP ? `Kirim Bukti DP (${formatRupiah(dpAmount)})` : needsPelunasan ? `Kirim Bukti Pelunasan (${formatRupiah(pelunasanAmount)})` : "Kirim Bukti Pembayaran"}</span>
                 </button>
               </form>
@@ -649,8 +653,11 @@ export default function CustomerBookingDetailPage() {
                 <button
                   type="submit"
                   disabled={submittingReview}
-                  className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl"
+                  className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
+                  {submittingReview && (
+                    <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
+                  )}
                   {submittingReview ? "Mengirim..." : "Kirim Ulasan"}
                 </button>
               </div>

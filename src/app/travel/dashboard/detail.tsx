@@ -1465,17 +1465,24 @@ export default function TravelPackageDetailPage({ packageId: propPackageId, onBa
                                 type="button"
                                 disabled={isProcessing}
                                 onClick={() => handleApplicationAction(app.id, "REJECT")}
-                                className="px-3 py-2 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-bold disabled:opacity-50 cursor-pointer"
+                                className="px-3 py-2 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1.5"
                               >
-                                Tolak
+                                {isProcessing && (
+                                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-rose-700" />
+                                )}
+                                <span>Tolak</span>
                               </button>
                               <button
                                 type="button"
                                 disabled={isProcessing}
                                 onClick={() => handleApplicationAction(app.id, "APPROVE")}
-                                className="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                                className="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                               >
-                                <Check className="w-3.5 h-3.5" />
+                                {isProcessing ? (
+                                  <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
+                                ) : (
+                                  <Check className="w-3.5 h-3.5" />
+                                )}
                                 <span>{isProcessing ? "Memproses..." : "Terima & Tugaskan Kru"}</span>
                               </button>
                             </div>
@@ -1710,9 +1717,12 @@ export default function TravelPackageDetailPage({ packageId: propPackageId, onBa
                 type="button"
                 onClick={handlePayFee}
                 disabled={payingFee || !feeProofFile}
-                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs cursor-pointer"
               >
-                {payingFee ? "Mengupload..." : payFeeMode === "DP" ? "Kirim Bukti DP" : payFeeMode === "REMAINING" ? "Kirim Bukti Pelunasan" : "Kirim Bukti Bayar"}
+                {payingFee && (
+                  <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
+                )}
+                <span>{payingFee ? "Mengupload..." : payFeeMode === "DP" ? "Kirim Bukti DP" : payFeeMode === "REMAINING" ? "Kirim Bukti Pelunasan" : "Kirim Bukti Bayar"}</span>
               </button>
             </div>
           </div>
@@ -1763,9 +1773,12 @@ export default function TravelPackageDetailPage({ packageId: propPackageId, onBa
               <button
                 onClick={handleTravelCounter}
                 disabled={!travelCounterFee || respondingId === counterAssignment.id}
-                className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:bg-slate-300 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs cursor-pointer"
               >
-                Kirim Tawaran Balik
+                {respondingId === counterAssignment.id && (
+                  <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
+                )}
+                <span>{respondingId === counterAssignment.id ? "Mengirim..." : "Kirim Tawaran Balik"}</span>
               </button>
             </div>
           </div>

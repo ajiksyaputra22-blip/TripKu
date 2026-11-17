@@ -505,10 +505,14 @@ export default function BookingPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md shadow-emerald-600/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md shadow-emerald-600/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
+                  {submitting ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                  ) : (
+                    <ArrowRight className="w-4 h-4" />
+                  )}
                   {submitting ? "Memproses Pemesanan..." : "Konfirmasi & Lanjut Pembayaran"}
-                  <ArrowRight className="w-4 h-4" />
                 </button>
               </form>
             </div>

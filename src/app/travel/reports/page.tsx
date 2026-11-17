@@ -316,7 +316,11 @@ export default function TravelReportsPage() {
                   className="w-full text-left px-3 py-2.5 hover:bg-slate-50 flex items-center gap-2.5 text-xs font-medium text-slate-700 disabled:opacity-50"
                 >
                   <div className="w-7 h-7 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center">
-                    <FileText className="w-3.5 h-3.5" />
+                    {downloadingPdf ? (
+                      <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-rose-700" />
+                    ) : (
+                      <FileText className="w-3.5 h-3.5" />
+                    )}
                   </div>
                   <div>
                     <div className="font-semibold text-slate-900">{downloadingPdf ? "Membuat PDF..." : "Download PDF"}</div>
