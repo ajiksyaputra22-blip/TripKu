@@ -172,9 +172,8 @@ function SearchableFilterInput({
             }
           }}
           placeholder={placeholder}
-          className={`w-full pl-8 pr-14 py-2 bg-slate-50 border rounded-xl text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:bg-white text-slate-900 transition-all ${
-            isCustomOrActive ? "border-emerald-500/70 bg-emerald-50/20" : "border-slate-200"
-          }`}
+          className={`w-full pl-8 pr-14 py-2 bg-slate-50 border rounded-xl text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:bg-white text-slate-900 transition-all ${isCustomOrActive ? "border-emerald-500/70 bg-emerald-50/20" : "border-slate-200"
+            }`}
         />
 
         <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
@@ -206,10 +205,7 @@ function SearchableFilterInput({
       {/* Floating Dropdown Menu */}
       {isOpen && (
         <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-xl border border-slate-200 shadow-xl z-50 overflow-hidden text-xs py-1 animate-in fade-in zoom-in-95 max-w-[280px] sm:max-w-none">
-          <div className="px-3 py-1.5 border-b border-slate-100 text-[10px] font-semibold text-slate-400 flex items-center justify-between">
-            <span>Pilih opsi atau ketik manual</span>
-            <span>{options.length} opsi</span>
-          </div>
+
 
           <div className="max-h-56 overflow-y-auto divide-y divide-slate-50">
             {/* Opsi Semua (Reset) */}
@@ -219,9 +215,8 @@ function SearchableFilterInput({
                 onChange("ALL");
                 setIsOpen(false);
               }}
-              className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-slate-50 transition-colors ${
-                !isCustomOrActive ? "bg-emerald-50/70 text-emerald-800 font-bold" : "text-slate-700"
-              }`}
+              className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-slate-50 transition-colors ${!isCustomOrActive ? "bg-emerald-50/70 text-emerald-800 font-bold" : "text-slate-700"
+                }`}
             >
               <span>{allLabel}</span>
               {!isCustomOrActive && <Check className="w-3.5 h-3.5 text-emerald-600" />}
@@ -240,9 +235,8 @@ function SearchableFilterInput({
                     onChange(opt.value);
                     setIsOpen(false);
                   }}
-                  className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-slate-50 transition-colors ${
-                    isSelected ? "bg-emerald-50 text-emerald-800 font-bold" : "text-slate-700"
-                  }`}
+                  className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-slate-50 transition-colors ${isSelected ? "bg-emerald-50 text-emerald-800 font-bold" : "text-slate-700"
+                    }`}
                 >
                   <span className="truncate pr-2">{opt.label}</span>
                   <div className="flex items-center gap-1 shrink-0">
@@ -454,11 +448,11 @@ function ExploreContent() {
 
   const hasActiveFilters = Boolean(
     search ||
-      (category && category !== "ALL") ||
-      (province && province !== "ALL") ||
-      (destination && destination !== "ALL") ||
-      (duration && duration !== "ALL") ||
-      maxPrice < 10000000
+    (category && category !== "ALL") ||
+    (province && province !== "ALL") ||
+    (destination && destination !== "ALL") ||
+    (duration && duration !== "ALL") ||
+    maxPrice < 10000000
   );
 
   return (
@@ -498,9 +492,8 @@ function ExploreContent() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Cari nama paket, lokasi..."
-                  className={`w-full pl-8 pr-8 py-2 bg-slate-50 border rounded-xl text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:bg-white text-slate-900 transition-all ${
-                    search ? "border-emerald-500/70 bg-emerald-50/20" : "border-slate-200"
-                  }`}
+                  className={`w-full pl-8 pr-8 py-2 bg-slate-50 border rounded-xl text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:bg-white text-slate-900 transition-all ${search ? "border-emerald-500/70 bg-emerald-50/20" : "border-slate-200"
+                    }`}
                 />
                 {search && (
                   <button
