@@ -103,7 +103,6 @@ export default function Footer() {
             <ul className="space-y-3 text-xs">
               <li><Link href="/about" className="hover:text-white transition-colors">Tentang Kami</Link></li>
               <li><Link href="/careers" className="hover:text-white transition-colors">Cara Kerja TripKu</Link></li>
-              <li><Link href="/blog" className="hover:text-white transition-colors">Destinasi Wisata</Link></li>
             </ul>
           </div>
 
