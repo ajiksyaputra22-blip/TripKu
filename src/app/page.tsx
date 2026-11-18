@@ -348,18 +348,13 @@ export default async function HomePage() {
                 Bergabunglah ke ekosistem terpadu kami untuk memperluas jangkauan pasar wisatawan dan mengelola penugasan perjalanan secara profesional.
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="shrink-0">
               <Link
-                href="/register?role=TRAVEL"
-                className="px-5 py-3 rounded-xl bg-white text-emerald-800 hover:bg-emerald-50 font-bold text-xs shadow-lg transition-all"
+                href="/auth"
+                className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-xl bg-white text-emerald-900 hover:bg-emerald-50 font-bold text-sm shadow-xl shadow-emerald-950/20 hover:shadow-2xl transition-all group"
               >
-                Daftar Sebagai Travel
-              </Link>
-              <Link
-                href="/register?role=GUIDE"
-                className="px-5 py-3 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs border border-emerald-500 transition-all"
-              >
-                Gabung Tour Guide / Driver
+                <span>Bergabung Bersama Kami</span>
+                <ArrowRight className="w-4 h-4 text-emerald-700 group-hover:translate-x-0.5 transition-transform" />
               </Link>
             </div>
           </div>
