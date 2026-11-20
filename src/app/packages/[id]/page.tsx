@@ -121,7 +121,7 @@ export default async function PackageDetailPage({ params }: PageProps) {
 
   // ─── Sub-render: Quick Booking Card ───
   const renderQuickBookingCard = () => (
-    <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col space-y-4">
+    <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col space-y-4 w-full">
       <div className="flex items-center justify-between pb-3 border-b border-slate-100">
         <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
           {pkg.pricingType === "CUSTOM" ? "Harga Mulai Dari" : "Harga Resmi"}
@@ -637,7 +637,7 @@ export default async function PackageDetailPage({ params }: PageProps) {
           </div>
 
           {/* Right Column (Sidebar Sticky on Desktop) */}
-          <div className="hidden lg:block lg:col-span-1 space-y-6 lg:sticky lg:top-8">
+          <div className="hidden lg:block lg:col-span-1 space-y-6 self-start">
             {renderQuickBookingCard()}
             {renderSidebarCards()}
           </div>
