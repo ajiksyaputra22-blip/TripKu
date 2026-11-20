@@ -28,7 +28,7 @@ interface PageProps {
 export default async function PackageDetailPage({ params }: PageProps) {
   const { id } = await params;
 
-  const pkg = await prisma.package.findFirst({
+  const pkgData = await prisma.package.findFirst({
     where: {
       OR: [{ id }, { slug: id }],
     },
@@ -37,12 +37,14 @@ export default async function PackageDetailPage({ params }: PageProps) {
       priceTiers: {
         orderBy: { minPax: "asc" },
       },
-    },
+    } as any,
   });
 
-  if (!pkg) {
+  if (!pkgData) {
     notFound();
   }
+
+  const pkg: any = pkgData;
 
   const session = await getSession();
 
