@@ -195,11 +195,10 @@ export default async function PackageDetailPage({ params }: PageProps) {
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
                   {pkg.pricingType === "CUSTOM" ? "Harga Mulai Dari" : "Harga Resmi"}
                 </span>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                  pkg.pricingType === "CUSTOM"
+                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${pkg.pricingType === "CUSTOM"
                     ? "bg-amber-100 text-amber-800"
                     : "bg-emerald-100 text-emerald-800"
-                }`}>
+                  }`}>
                   {pkg.pricingType === "CUSTOM" ? "Harga Bertingkat" : "Tersedia"}
                 </span>
               </div>
@@ -376,7 +375,7 @@ export default async function PackageDetailPage({ params }: PageProps) {
                     </p>
                   </div>
                   <span className="self-start sm:self-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                    Harga Custom
+                    Harga
                   </span>
                 </div>
 
