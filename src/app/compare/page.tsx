@@ -128,7 +128,11 @@ export default function ComparePage() {
                         {pkg.name}
                       </h3>
                       <div className="mt-2 text-emerald-600 font-extrabold text-base">
-                        {formatRupiah(pkg.price)}
+                        {pkg.pricingType === "CUSTOM" && (
+                          <span className="text-[10px] text-slate-500 font-normal block leading-tight">Mulai dari</span>
+                        )}
+                        <span>{formatRupiah(pkg.price)}</span>
+                        <span className="text-[10px] text-slate-400 font-normal ml-0.5">/org</span>
                       </div>
                       <Link
                         href={`/packages/${pkg.slug || pkg.id}/book`}

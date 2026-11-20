@@ -193,8 +193,8 @@ export default function CustomerBookingDetailPage() {
   const needsPelunasan = booking.status === "NEEDS_PELUNASAN" || (hasDP && dpPayment?.status === "VERIFIED" && !pelunasanPayment);
   const showPaymentForm = booking.status === "WAITING_PAYMENT" || booking.status === "WAITING_DP_PAYMENT" || booking.status === "NEEDS_PELUNASAN" || pelunasanPayment?.status === "REJECTED" || dpPayment?.status === "REJECTED";
 
-  // Rincian Pembayaran
-  const packagePrice = booking.package?.price || 0;
+  // Rincian Pembayaran (menggunakan snapshot harga yang tersimpan di booking)
+  const packagePrice = booking.pricePerPerson ?? booking.package?.price ?? 0;
   const participantCount = booking.participantCount || booking.participants?.length || 1;
   const packageSubtotal = packagePrice * participantCount;
   const adminFeeTotal = typeof booking.adminFeeTotal === "number" && booking.adminFeeTotal > 0
@@ -395,7 +395,16 @@ export default function CustomerBookingDetailPage() {
 
             {/* Rincian Pembayaran */}
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 mb-4 text-xs space-y-2">
-              <h4 className="font-bold text-slate-900 text-xs mb-2">Rincian Pembayaran</h4>
+              <div className="flex justify-between items-center mb-2">
+                <h4 className="font-bold text-slate-900 text-xs">Rincian Pembayaran</h4>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                  booking.pricingType === "CUSTOM"
+                    ? "bg-amber-100 text-amber-800 border border-amber-200"
+                    : "bg-slate-100 text-slate-700"
+                }`}>
+                  {booking.pricingType === "CUSTOM" ? "Harga Custom" : "Harga Tetap"}
+                </span>
+              </div>
 
               <div className="flex justify-between items-center text-slate-600">
                 <span>Harga Paket per Orang</span>

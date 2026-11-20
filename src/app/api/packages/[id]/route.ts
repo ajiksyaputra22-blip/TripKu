@@ -27,6 +27,9 @@ export async function GET(
             bankHolder: true,
           },
         },
+        priceTiers: {
+          orderBy: { minPax: "asc" },
+        },
         trips: {
           include: {
             assignments: {
@@ -223,6 +226,77 @@ export async function PUT(
     const newCapacity = body.capacity ? parseInt(body.capacity) : existingPackage.capacity;
     let quotaLeftToSet = existingPackage.quotaLeft;
 
+    const pricingType = body.pricingType !== undefined ? (body.pricingType === "CUSTOM" ? "CUSTOM" : "FIXED") : (existingPackage as any).pricingType || "FIXED";
+    let parsedPrice = body.price ? parseFloat(body.price) : existingPackage.price;
+    const formattedTiers: { minPax: number; maxPax: number; price: number }[] = [];
+
+    if (pricingType === "CUSTOM") {
+      const rawPriceTiers = body.priceTiers;
+      if (!Array.isArray(rawPriceTiers) || rawPriceTiers.length === 0) {
+        return NextResponse.json(
+          { error: "Untuk metode Harga Custom, wajib menyertakan minimal 1 variasi rentang harga peserta." },
+          { status: 400 }
+        );
+      }
+
+      for (let i = 0; i < rawPriceTiers.length; i++) {
+        const t = rawPriceTiers[i];
+        const minPax = parseInt(t.minPax);
+        const maxPax = parseInt(t.maxPax);
+        const tierPrice = parseFloat(t.price);
+
+        if (isNaN(minPax) || isNaN(maxPax) || isNaN(tierPrice)) {
+          return NextResponse.json(
+            { error: `Data variasi harga baris ke-${i + 1} tidak valid.` },
+            { status: 400 }
+          );
+        }
+        if (minPax < 1) {
+          return NextResponse.json(
+            { error: `Minimal peserta pada baris ke-${i + 1} harus minimal 1 orang.` },
+            { status: 400 }
+          );
+        }
+        if (maxPax < minPax) {
+          return NextResponse.json(
+            { error: `Maksimal peserta (${maxPax}) tidak boleh lebih kecil dari minimal peserta (${minPax}) pada baris ke-${i + 1}.` },
+            { status: 400 }
+          );
+        }
+        if (tierPrice <= 0) {
+          return NextResponse.json(
+            { error: `Harga per orang pada baris ke-${i + 1} harus lebih dari Rp 0.` },
+            { status: 400 }
+          );
+        }
+        formattedTiers.push({ minPax, maxPax, price: tierPrice });
+      }
+
+      formattedTiers.sort((a, b) => a.minPax - b.minPax);
+
+      for (let i = 0; i < formattedTiers.length - 1; i++) {
+        const current = formattedTiers[i];
+        const next = formattedTiers[i + 1];
+        if (current.maxPax >= next.minPax) {
+          return NextResponse.json(
+            {
+              error: `Rentang peserta tumpang tindih: (${current.minPax}-${current.maxPax} pax) dan (${next.minPax}-${next.maxPax} pax). Setiap rentang peserta harus terpisah dan tidak bertabrakan.`,
+            },
+            { status: 400 }
+          );
+        }
+      }
+
+      parsedPrice = Math.min(...formattedTiers.map((t) => t.price));
+    } else {
+      if (isNaN(parsedPrice) || parsedPrice <= 0) {
+        return NextResponse.json(
+          { error: "Harga paket per orang wajib diisi dengan nominal angka yang valid." },
+          { status: 400 }
+        );
+      }
+    }
+
     // Reset quotaLeft ke penuh HANYA saat reactivate dari COMPLETED ke PUBLISHED
     if (body.status === "PUBLISHED" && existingPackage.status === "COMPLETED") {
       quotaLeftToSet = newCapacity;
@@ -239,7 +313,8 @@ export async function PUT(
         name: body.name ?? existingPackage.name,
         destination: body.destination ?? existingPackage.destination,
         originCity: body.originCity !== undefined ? (body.originCity || null) : existingPackage.originCity,
-        price: body.price ? parseFloat(body.price) : existingPackage.price,
+        price: parsedPrice,
+        pricingType,
         departureDate: body.departureDate ? new Date(body.departureDate) : existingPackage.departureDate,
         bookingDeadline: body.bookingDeadline !== undefined
           ? (body.bookingDeadline
@@ -300,7 +375,26 @@ export async function PUT(
       }
     }
 
-    return NextResponse.json({ success: true, package: updated });
+    if (pricingType === "CUSTOM") {
+      await prisma.packagePriceTier.deleteMany({ where: { packageId: id } });
+      await prisma.packagePriceTier.createMany({
+        data: formattedTiers.map((t) => ({
+          packageId: id,
+          minPax: t.minPax,
+          maxPax: t.maxPax,
+          price: t.price,
+        })),
+      });
+    } else {
+      await prisma.packagePriceTier.deleteMany({ where: { packageId: id } });
+    }
+
+    const finalUpdated = await prisma.package.findUnique({
+      where: { id },
+      include: { priceTiers: { orderBy: { minPax: "asc" } } },
+    });
+
+    return NextResponse.json({ success: true, package: finalUpdated || updated });
   } catch (error) {
     console.error("Update package error:", error);
     return NextResponse.json(

@@ -135,6 +135,11 @@ export default function BookingPage() {
       }
     }
 
+    if (tierError) {
+      setError(tierError);
+      return;
+    }
+
     setSubmitting(true);
     try {
       const res = await fetch("/api/bookings", {
@@ -181,7 +186,26 @@ export default function BookingPage() {
     );
   }
 
-  const packageSubtotal = pkg.price * participantCount;
+  // Tier matching & Pricing Calculation
+  const isCustomPricing = pkg.pricingType === "CUSTOM";
+  const tiers: any[] = pkg.priceTiers || [];
+  let unitPrice = pkg.price || 0;
+  let matchedTier: any = null;
+  let tierError: string | null = null;
+
+  if (isCustomPricing) {
+    matchedTier = tiers.find(
+      (t: any) => participantCount >= t.minPax && participantCount <= t.maxPax
+    );
+    if (matchedTier) {
+      unitPrice = matchedTier.price;
+    } else {
+      unitPrice = 0;
+      tierError = `Jumlah ${participantCount} peserta tidak memenuhi rentang variasi harga yang disediakan oleh agensi travel. Silakan sesuaikan jumlah peserta Anda dengan pilihan rentang harga di bawah.`;
+    }
+  }
+
+  const packageSubtotal = unitPrice * participantCount;
   const adminFeePerPerson = 5000;
   const adminFeeTotal = adminFeePerPerson * participantCount;
   const totalPrice = packageSubtotal + adminFeeTotal;
@@ -221,15 +245,23 @@ export default function BookingPage() {
               <form onSubmit={handleSubmit} className="space-y-6">
 
                 {/* 1. Jumlah Peserta */}
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80">
-                  <label className="block text-xs font-bold text-slate-900 mb-2">
-                    Jumlah Peserta (Pax)
-                  </label>
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <label className="block text-xs font-bold text-slate-900">
+                      Jumlah Peserta (Pax)
+                    </label>
+                    {isCustomPricing && (
+                      <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 self-start sm:self-auto">
+                        Skema Harga Custom
+                      </span>
+                    )}
+                  </div>
+
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
                       onClick={() => handleCountChange(participantCount - 1)}
-                      className="w-9 h-9 rounded-lg bg-white border border-slate-300 font-bold text-slate-700 hover:bg-slate-100 flex items-center justify-center"
+                      className="w-9 h-9 rounded-lg bg-white border border-slate-300 font-bold text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors"
                     >
                       -
                     </button>
@@ -239,7 +271,7 @@ export default function BookingPage() {
                     <button
                       type="button"
                       onClick={() => handleCountChange(participantCount + 1)}
-                      className="w-9 h-9 rounded-lg bg-white border border-slate-300 font-bold text-slate-700 hover:bg-slate-100 flex items-center justify-center"
+                      className="w-9 h-9 rounded-lg bg-white border border-slate-300 font-bold text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors"
                     >
                       +
                     </button>
@@ -247,6 +279,59 @@ export default function BookingPage() {
                       (Sisa kuota: {pkg.quotaLeft} orang)
                     </span>
                   </div>
+
+                  {/* Tier status notice */}
+                  {isCustomPricing && (
+                    <div className="pt-2 border-t border-slate-200/60">
+                      {matchedTier ? (
+                        <div className="flex items-center gap-2 text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <div>
+                            <span className="font-bold">Rentang Aktif: </span>
+                            <span>
+                              {matchedTier.minPax === matchedTier.maxPax
+                                ? `${matchedTier.minPax} Peserta`
+                                : `${matchedTier.minPax} - ${matchedTier.maxPax} Peserta`}{" "}
+                              — <strong>{formatRupiah(matchedTier.price)} / orang</strong>
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-start gap-2 text-xs text-rose-800 bg-rose-50 border border-rose-200 p-2.5 rounded-xl">
+                          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-bold block">Jumlah peserta tidak didukung!</span>
+                            <span>{tierError}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Supported tiers quick selector / pills */}
+                      {tiers.length > 0 && (
+                        <div className="mt-2 text-[11px] text-slate-500 flex items-center gap-1.5 flex-wrap">
+                          <span className="font-medium text-slate-600">Pilihan rentang harga:</span>
+                          {tiers.map((t: any, i: number) => {
+                            const isCurrent = participantCount >= t.minPax && participantCount <= t.maxPax;
+                            return (
+                              <button
+                                key={i}
+                                type="button"
+                                onClick={() => handleCountChange(t.minPax)}
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold border transition-colors ${
+                                  isCurrent
+                                    ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs"
+                                    : "bg-white text-slate-700 border-slate-300 hover:bg-slate-100"
+                                }`}
+                                title={`Pilih ${t.minPax} peserta`}
+                              >
+                                {t.minPax === t.maxPax ? `${t.minPax} pax` : `${t.minPax}-${t.maxPax} pax`}: {formatRupiah(t.price)}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* 2. Daftar Peserta Dinamis */}
@@ -504,7 +589,7 @@ export default function BookingPage() {
                 {/* Submit Action */}
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || Boolean(tierError)}
                   className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md shadow-emerald-600/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submitting ? (
@@ -512,7 +597,11 @@ export default function BookingPage() {
                   ) : (
                     <ArrowRight className="w-4 h-4" />
                   )}
-                  {submitting ? "Memproses Pemesanan..." : "Konfirmasi & Lanjut Pembayaran"}
+                  {submitting
+                    ? "Memproses Pemesanan..."
+                    : tierError
+                    ? "Jumlah Peserta Tidak Sesuai Rentang Harga"
+                    : "Konfirmasi & Lanjut Pembayaran"}
                 </button>
               </form>
             </div>
@@ -582,9 +671,21 @@ export default function BookingPage() {
 
               {/* Price Calculation */}
               <div className="border-t border-slate-100 pt-3 space-y-2 text-xs text-slate-600">
+                <div className="flex justify-between items-center">
+                  <span>Metode Penentuan Harga</span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                    isCustomPricing
+                      ? "bg-amber-100 text-amber-800"
+                      : "bg-slate-100 text-slate-700"
+                  }`}>
+                    {isCustomPricing ? "Harga Custom" : "Harga Tetap"}
+                  </span>
+                </div>
                 <div className="flex justify-between">
                   <span>Harga Paket per Orang</span>
-                  <span className="font-medium text-slate-900">{formatRupiah(pkg.price)}</span>
+                  <span className={`font-semibold ${tierError ? "text-rose-600 italic" : "text-slate-900"}`}>
+                    {tierError ? "Di luar rentang" : formatRupiah(unitPrice)}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Jumlah Peserta</span>
@@ -592,7 +693,9 @@ export default function BookingPage() {
                 </div>
                 <div className="flex justify-between">
                   <span>Subtotal Harga Paket</span>
-                  <span className="font-semibold text-slate-900">{formatRupiah(packageSubtotal)}</span>
+                  <span className="font-semibold text-slate-900">
+                    {tierError ? "Rp 0" : formatRupiah(packageSubtotal)}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Biaya Admin per Orang</span>
@@ -604,10 +707,16 @@ export default function BookingPage() {
                 </div>
                 <div className="border-t border-slate-200 pt-2 flex justify-between items-baseline font-bold">
                   <span className="text-slate-900 text-xs">Total Pembayaran</span>
-                  <span className="text-sm font-extrabold text-emerald-600">
-                    {formatRupiah(totalPrice)}
+                  <span className={`text-sm font-extrabold ${tierError ? "text-slate-400" : "text-emerald-600"}`}>
+                    {tierError ? "—" : formatRupiah(totalPrice)}
                   </span>
                 </div>
+
+                {tierError && (
+                  <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-[11px] leading-snug">
+                    Jumlah peserta saat ini ({participantCount} orang) belum dapat dipesan. Mohon sesuaikan jumlah peserta agar sesuai rentang harga yang berlaku.
+                  </div>
+                )}
 
                 {/* Selected Payment Plan Breakdown */}
                 {pkg.dpPercentage > 0 && paymentPlan === "DP" ? (

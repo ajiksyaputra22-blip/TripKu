@@ -18,6 +18,8 @@ export interface PackageData {
   vehicle: string;
   accommodation: string;
   category?: string;
+  pricingType?: string;
+  priceTiers?: { minPax: number; maxPax: number; price: number }[];
   dpPercentage?: number;
   facilities?: string;
   description?: string;
@@ -152,11 +154,27 @@ export default function PackageCard({ pkg, onCompareToggle, isComparing }: Packa
         {/* Pricing & CTA */}
         <div className="mt-4 pt-3 border-t border-slate-100 flex items-end justify-between gap-2">
           <div>
-            <span className="text-[11px] text-slate-400 block font-medium">Mulai dari</span>
-            <span className="text-lg font-extrabold text-emerald-600 tracking-tight leading-none block">
-              {formatRupiah(pkg.price)}
-            </span>
-            <span className="text-[10px] text-slate-400">/ orang</span>
+            {pkg.pricingType === "CUSTOM" ? (
+              <>
+                <span className="text-[11px] text-emerald-700 block font-bold">Mulai dari</span>
+                <span className="text-lg font-extrabold text-emerald-600 tracking-tight leading-none block">
+                  {formatRupiah(
+                    pkg.priceTiers && pkg.priceTiers.length > 0
+                      ? Math.min(...pkg.priceTiers.map((t) => t.price))
+                      : pkg.price
+                  )}
+                </span>
+                <span className="text-[10px] text-slate-400">/ orang (Custom)</span>
+              </>
+            ) : (
+              <>
+                <span className="text-[11px] text-slate-400 block font-medium">Harga per orang</span>
+                <span className="text-lg font-extrabold text-emerald-600 tracking-tight leading-none block">
+                  {formatRupiah(pkg.price)}
+                </span>
+                <span className="text-[10px] text-slate-400">/ peserta</span>
+              </>
+            )}
           </div>
 
           <Link

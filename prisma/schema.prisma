@@ -107,12 +107,27 @@ model Package {
   dpPercentage    Int       @default(0)
   category        String    @default("WISATA_ALAM")
   status          String    @default("PUBLISHED")
+  pricingType     String    @default("FIXED")
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   bookings        Booking[]
   travel          Travel    @relation(fields: [travelId], references: [id], onDelete: Cascade)
   trips           Trip[]
   crewApplications CrewApplication[]
+  priceTiers      PackagePriceTier[]
+}
+
+model PackagePriceTier {
+  id        String   @id @default(cuid())
+  packageId String
+  minPax    Int
+  maxPax    Int
+  price     Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  package   Package  @relation(fields: [packageId], references: [id], onDelete: Cascade)
+
+  @@index([packageId])
 }
 
 model Booking {
@@ -122,6 +137,8 @@ model Booking {
   packageId        String
   bookingDate      DateTime      @default(now())
   participantCount Int           @default(1)
+  pricingType      String        @default("FIXED")
+  pricePerPerson   Float?
   totalPrice       Float
   adminFeeTotal    Int           @default(0)
   dpAmount         Float         @default(0)

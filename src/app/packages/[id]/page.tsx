@@ -34,6 +34,9 @@ export default async function PackageDetailPage({ params }: PageProps) {
     },
     include: {
       travel: true,
+      priceTiers: {
+        orderBy: { minPax: "asc" },
+      },
     },
   });
 
@@ -190,18 +193,30 @@ export default async function PackageDetailPage({ params }: PageProps) {
             <div>
               <div className="flex items-center justify-between pb-4 border-b border-slate-100">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Harga Resmi
+                  {pkg.pricingType === "CUSTOM" ? "Harga Mulai Dari" : "Harga Resmi"}
                 </span>
-                <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
-                  Tersedia
+                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                  pkg.pricingType === "CUSTOM"
+                    ? "bg-amber-100 text-amber-800"
+                    : "bg-emerald-100 text-emerald-800"
+                }`}>
+                  {pkg.pricingType === "CUSTOM" ? "Harga Bertingkat" : "Tersedia"}
                 </span>
               </div>
 
               <div className="mt-4">
+                {pkg.pricingType === "CUSTOM" && (
+                  <span className="text-xs text-slate-500 font-semibold block mb-0.5">Mulai dari</span>
+                )}
                 <span className="text-3xl font-extrabold text-emerald-600 tracking-tight">
                   {formatRupiah(pkg.price)}
                 </span>
                 <span className="text-xs text-slate-400 ml-1">/ peserta</span>
+                {pkg.pricingType === "CUSTOM" && (
+                  <span className="block text-[11px] text-amber-700 font-medium mt-1">
+                    *Menyesuaikan jumlah peserta rombongan
+                  </span>
+                )}
               </div>
 
               {/* Status Kuota */}
@@ -346,6 +361,76 @@ export default async function PackageDetailPage({ params }: PageProps) {
                 {pkg.description}
               </p>
             </div>
+
+            {/* Tiered Pricing Table if CUSTOM */}
+            {pkg.pricingType === "CUSTOM" && pkg.priceTiers && pkg.priceTiers.length > 0 && (
+              <div className="bg-white rounded-2xl border border-amber-200 p-6 shadow-xs bg-gradient-to-br from-white via-white to-amber-50/30">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                      <CreditCard className="w-5 h-5 text-amber-600" />
+                      <span>Variasi Harga Berdasarkan Jumlah Peserta</span>
+                    </h2>
+                    <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                      Harga per orang akan dihitung otomatis sesuai jumlah rombongan yang Anda daftarkan saat pemesanan.
+                    </p>
+                  </div>
+                  <span className="self-start sm:self-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                    Harga Custom
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto mt-4 border border-slate-200 rounded-xl bg-white shadow-2xs">
+                  <table className="w-full text-left text-xs sm:text-sm">
+                    <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+                      <tr>
+                        <th className="py-3 px-4">Rentang Peserta (Pax)</th>
+                        <th className="py-3 px-4">Harga per Orang</th>
+                        <th className="py-3 px-4 text-right">Contoh Total Biaya</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {pkg.priceTiers.map((tier: any) => {
+                        const isSingle = tier.minPax === tier.maxPax;
+                        const paxLabel = isSingle
+                          ? `${tier.minPax} Peserta`
+                          : `${tier.minPax} - ${tier.maxPax} Peserta`;
+                        const minTotal = tier.minPax * tier.price;
+                        const maxTotal = tier.maxPax * tier.price;
+                        const totalLabel = isSingle
+                          ? formatRupiah(minTotal)
+                          : `${formatRupiah(minTotal)} - ${formatRupiah(maxTotal)}`;
+
+                        return (
+                          <tr key={tier.id} className="hover:bg-amber-50/40 transition-colors">
+                            <td className="py-3 px-4 font-bold text-slate-900">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 text-xs">
+                                <Users className="w-3.5 h-3.5 text-slate-500" />
+                                {paxLabel}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 font-extrabold text-emerald-700">
+                              {formatRupiah(tier.price)}
+                              <span className="text-[11px] font-normal text-slate-400 ml-1">/ org</span>
+                            </td>
+                            <td className="py-3 px-4 text-right font-semibold text-slate-700">
+                              {totalLabel}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="mt-3.5 flex items-start gap-2 text-[11px] text-slate-500 bg-amber-50/60 p-3 rounded-xl border border-amber-200/60">
+                  <ShieldCheck className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Catatan:</strong> Pemesanan hanya dapat diproses untuk jumlah peserta yang berada dalam salah satu rentang di atas. Jika jumlah peserta di luar rentang, sistem akan menolak pemesanan.
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Facilities Included */}
             <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs">

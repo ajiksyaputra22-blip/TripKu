@@ -47,6 +47,9 @@ async function getFeaturedPackages(): Promise<PackageData[]> {
             participantCount: true,
           },
         },
+        priceTiers: {
+          orderBy: { minPax: "asc" },
+        },
         _count: { select: { bookings: true } },
       },
       orderBy: [

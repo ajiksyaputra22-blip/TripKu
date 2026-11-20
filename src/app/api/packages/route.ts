@@ -186,6 +186,9 @@ export async function GET(request: Request) {
             participantCount: true,
           },
         },
+        priceTiers: {
+          orderBy: { minPax: "asc" },
+        },
         _count: { select: { bookings: true } },
       },
       orderBy: [
@@ -276,6 +279,8 @@ export async function POST(request: Request) {
       originCity,
       province,
       price,
+      pricingType: rawPricingType,
+      priceTiers: rawPriceTiers,
       departureDate,
       bookingDeadline,
       durationDays,
@@ -291,9 +296,82 @@ export async function POST(request: Request) {
       category,
     } = body;
 
-    if (!name || !destination || !price || !capacity || !description) {
+    const pricingType = rawPricingType === "CUSTOM" ? "CUSTOM" : "FIXED";
+    let parsedPrice = parseFloat(price || "0");
+    const formattedTiers: { minPax: number; maxPax: number; price: number }[] = [];
+
+    if (pricingType === "CUSTOM") {
+      if (!Array.isArray(rawPriceTiers) || rawPriceTiers.length === 0) {
+        return NextResponse.json(
+          { error: "Untuk metode Harga Custom, wajib menyertakan minimal 1 variasi rentang harga peserta." },
+          { status: 400 }
+        );
+      }
+
+      for (let i = 0; i < rawPriceTiers.length; i++) {
+        const t = rawPriceTiers[i];
+        const minPax = parseInt(t.minPax);
+        const maxPax = parseInt(t.maxPax);
+        const tierPrice = parseFloat(t.price);
+
+        if (isNaN(minPax) || isNaN(maxPax) || isNaN(tierPrice)) {
+          return NextResponse.json(
+            { error: `Data variasi harga baris ke-${i + 1} tidak valid.` },
+            { status: 400 }
+          );
+        }
+        if (minPax < 1) {
+          return NextResponse.json(
+            { error: `Minimal peserta pada baris ke-${i + 1} harus minimal 1 orang.` },
+            { status: 400 }
+          );
+        }
+        if (maxPax < minPax) {
+          return NextResponse.json(
+            { error: `Maksimal peserta (${maxPax}) tidak boleh lebih kecil dari minimal peserta (${minPax}) pada baris ke-${i + 1}.` },
+            { status: 400 }
+          );
+        }
+        if (tierPrice <= 0) {
+          return NextResponse.json(
+            { error: `Harga per orang pada baris ke-${i + 1} harus lebih dari Rp 0.` },
+            { status: 400 }
+          );
+        }
+        formattedTiers.push({ minPax, maxPax, price: tierPrice });
+      }
+
+      // Sort by minPax ascending
+      formattedTiers.sort((a, b) => a.minPax - b.minPax);
+
+      // Validate NO overlapping ranges
+      for (let i = 0; i < formattedTiers.length - 1; i++) {
+        const current = formattedTiers[i];
+        const next = formattedTiers[i + 1];
+        if (current.maxPax >= next.minPax) {
+          return NextResponse.json(
+            {
+              error: `Rentang peserta tumpang tindih: (${current.minPax}-${current.maxPax} pax) dan (${next.minPax}-${next.maxPax} pax). Setiap rentang peserta harus terpisah dan tidak bertabrakan.`,
+            },
+            { status: 400 }
+          );
+        }
+      }
+
+      // Base price for custom pricing is the minimum price among tiers (Mulai dari)
+      parsedPrice = Math.min(...formattedTiers.map((t) => t.price));
+    } else {
+      if (isNaN(parsedPrice) || parsedPrice <= 0) {
+        return NextResponse.json(
+          { error: "Harga paket per orang wajib diisi dengan nominal angka yang valid." },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (!name || !destination || !capacity || !description) {
       return NextResponse.json(
-        { error: "Nama, destinasi, harga, kapasitas, dan deskripsi wajib diisi." },
+        { error: "Nama, destinasi, kapasitas, dan deskripsi wajib diisi." },
         { status: 400 }
       );
     }
@@ -351,7 +429,19 @@ export async function POST(request: Request) {
         destination,
         originCity: originCity || null,
         province: province || "Indonesia",
-        price: parseFloat(price),
+        price: parsedPrice,
+        pricingType,
+        ...(pricingType === "CUSTOM" && formattedTiers.length > 0
+          ? {
+              priceTiers: {
+                create: formattedTiers.map((t) => ({
+                  minPax: t.minPax,
+                  maxPax: t.maxPax,
+                  price: t.price,
+                })),
+              },
+            }
+          : {}),
         departureDate: departureDate ? new Date(departureDate) : new Date(Date.now() + 7 * 86400000),
         bookingDeadline: bookingDeadline
           ? new Date(bookingDeadline.includes("T") ? bookingDeadline : `${bookingDeadline}T23:59:59.999Z`)

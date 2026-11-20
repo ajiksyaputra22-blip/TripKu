@@ -39,7 +39,14 @@ export default function TravelPackagesPage() {
   const [name, setName] = useState("");
   const [destination, setDestination] = useState("");
   const [originCity, setOriginCity] = useState("");
+  const [pricingType, setPricingType] = useState<"FIXED" | "CUSTOM">("FIXED");
   const [price, setPrice] = useState("");
+  const [priceTiers, setPriceTiers] = useState<{ minPax: string; maxPax: string; price: string }[]>([
+    { minPax: "1", maxPax: "1", price: "1000000" },
+    { minPax: "2", maxPax: "4", price: "850000" },
+    { minPax: "5", maxPax: "8", price: "700000" },
+    { minPax: "9", maxPax: "12", price: "600000" },
+  ]);
   const [durationDays, setDurationDays] = useState("3");
   const [capacity, setCapacity] = useState("12");
   const [vehicle, setVehicle] = useState("HiAce Commuter / Bus Pariwisata AC");
@@ -125,12 +132,40 @@ export default function TravelPackagesPage() {
     fetchPackages();
   }, []);
 
+  const handleAddTier = () => {
+    const lastTier = priceTiers[priceTiers.length - 1];
+    const nextMin = lastTier && !isNaN(parseInt(lastTier.maxPax)) ? parseInt(lastTier.maxPax) + 1 : 1;
+    const nextMax = nextMin + 2;
+    setPriceTiers([...priceTiers, { minPax: nextMin.toString(), maxPax: nextMax.toString(), price: "" }]);
+  };
+
+  const handleRemoveTier = (index: number) => {
+    if (priceTiers.length <= 1) {
+      toast.warning("Minimal harus ada 1 rentang harga pada metode Harga Custom.");
+      return;
+    }
+    setPriceTiers(priceTiers.filter((_, i) => i !== index));
+  };
+
+  const handleTierChange = (index: number, field: "minPax" | "maxPax" | "price", value: string) => {
+    const updated = [...priceTiers];
+    updated[index] = { ...updated[index], [field]: value };
+    setPriceTiers(updated);
+  };
+
   const openCreateModal = () => {
     setEditingPkg(null);
     setName("");
     setDestination("");
     setOriginCity("");
+    setPricingType("FIXED");
     setPrice("");
+    setPriceTiers([
+      { minPax: "1", maxPax: "1", price: "1000000" },
+      { minPax: "2", maxPax: "4", price: "850000" },
+      { minPax: "5", maxPax: "8", price: "700000" },
+      { minPax: "9", maxPax: "12", price: "600000" },
+    ]);
     setDurationDays("");
     setCapacity("");
     setVehicle("");
@@ -156,7 +191,22 @@ export default function TravelPackagesPage() {
     setName(pkg.name);
     setDestination(pkg.destination);
     setOriginCity(pkg.originCity || "");
-    setPrice(pkg.price.toString());
+    setPricingType(pkg.pricingType === "CUSTOM" ? "CUSTOM" : "FIXED");
+    setPrice(pkg.price ? pkg.price.toString() : "");
+    if (pkg.priceTiers && Array.isArray(pkg.priceTiers) && pkg.priceTiers.length > 0) {
+      setPriceTiers(
+        pkg.priceTiers.map((t: any) => ({
+          minPax: t.minPax?.toString() || "1",
+          maxPax: t.maxPax?.toString() || "1",
+          price: t.price?.toString() || "0",
+        }))
+      );
+    } else {
+      setPriceTiers([
+        { minPax: "1", maxPax: "1", price: pkg.price?.toString() || "1000000" },
+        { minPax: "2", maxPax: "4", price: Math.round((pkg.price || 1000000) * 0.85).toString() },
+      ]);
+    }
     setDurationDays(pkg.durationDays.toString());
     setCapacity(pkg.capacity.toString());
     setVehicle(pkg.vehicle);
@@ -202,6 +252,71 @@ export default function TravelPackagesPage() {
       return;
     }
 
+    // Validate pricing
+    let finalPrice = parseFloat(price || "0");
+    const formattedTiers: { minPax: number; maxPax: number; price: number }[] = [];
+
+    if (pricingType === "CUSTOM") {
+      if (!priceTiers || priceTiers.length === 0) {
+        toast.warning("Metode Harga Custom membutuhkan minimal 1 rentang harga.");
+        setSubmitting(false);
+        return;
+      }
+
+      for (let i = 0; i < priceTiers.length; i++) {
+        const t = priceTiers[i];
+        const minPax = parseInt(t.minPax);
+        const maxPax = parseInt(t.maxPax);
+        const tierPrice = parseFloat(t.price);
+
+        if (isNaN(minPax) || isNaN(maxPax) || isNaN(tierPrice)) {
+          toast.warning(`Variasi harga baris ke-${i + 1} belum lengkap atau tidak valid.`);
+          setSubmitting(false);
+          return;
+        }
+        if (minPax < 1) {
+          toast.warning(`Min. Peserta pada baris ke-${i + 1} minimal 1 orang.`);
+          setSubmitting(false);
+          return;
+        }
+        if (maxPax < minPax) {
+          toast.warning(
+            `Maks. Peserta (${maxPax}) tidak boleh lebih kecil dari Min. Peserta (${minPax}) pada baris ke-${i + 1}.`
+          );
+          setSubmitting(false);
+          return;
+        }
+        if (tierPrice <= 0) {
+          toast.warning(`Harga per orang pada baris ke-${i + 1} harus lebih dari Rp 0.`);
+          setSubmitting(false);
+          return;
+        }
+        formattedTiers.push({ minPax, maxPax, price: tierPrice });
+      }
+
+      formattedTiers.sort((a, b) => a.minPax - b.minPax);
+
+      for (let i = 0; i < formattedTiers.length - 1; i++) {
+        const current = formattedTiers[i];
+        const next = formattedTiers[i + 1];
+        if (current.maxPax >= next.minPax) {
+          toast.warning(
+            `Rentang peserta tumpang tindih: (${current.minPax}-${current.maxPax} pax) bertabrakan dengan (${next.minPax}-${next.maxPax} pax).`
+          );
+          setSubmitting(false);
+          return;
+        }
+      }
+
+      finalPrice = Math.min(...formattedTiers.map((t) => t.price));
+    } else {
+      if (isNaN(finalPrice) || finalPrice <= 0) {
+        toast.warning("Harga per orang (Harga Tetap) harus berupa angka lebih dari 0.");
+        setSubmitting(false);
+        return;
+      }
+    }
+
     try {
       const url = editingPkg ? `/api/packages/${editingPkg.id}` : "/api/packages";
       const method = editingPkg ? "PUT" : "POST";
@@ -218,7 +333,9 @@ export default function TravelPackagesPage() {
           name,
           destination,
           originCity: originCity || null,
-          price: parseFloat(price),
+          price: finalPrice,
+          pricingType,
+          priceTiers: pricingType === "CUSTOM" ? formattedTiers : [],
           durationDays: parseInt(durationDays),
           capacity: parseInt(capacity),
           vehicle,
@@ -470,7 +587,16 @@ export default function TravelPackagesPage() {
                       {/* Price & Action */}
                       <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-3">
                         <div>
-                          <span className="text-[10px] text-slate-400 uppercase font-bold block">Harga / Orang</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-slate-400 uppercase font-bold block">
+                              {pkg.pricingType === "CUSTOM" ? "Mulai dari" : "Harga / Orang"}
+                            </span>
+                            {pkg.pricingType === "CUSTOM" && (
+                              <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                                Custom Pax
+                              </span>
+                            )}
+                          </div>
                           <span className="text-base font-extrabold text-emerald-700">
                             {formatRupiah(pkg.price)}
                           </span>
@@ -553,7 +679,22 @@ export default function TravelPackagesPage() {
                             </div>
                           </td>
                           <td className="p-4 font-medium text-slate-700">{pkg.destination}</td>
-                          <td className="p-4 font-extrabold text-emerald-700">{formatRupiah(pkg.price)}</td>
+                          <td className="p-4 font-extrabold text-emerald-700">
+                            {pkg.pricingType === "CUSTOM" ? (
+                              <div>
+                                <span className="text-[10px] text-slate-400 font-semibold block uppercase tracking-wider">Mulai dari</span>
+                                <span>{formatRupiah(pkg.price)}</span>
+                                <span className="block text-[9px] text-amber-700 font-bold bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200 mt-0.5 inline-block">
+                                  Custom Pax
+                                </span>
+                              </div>
+                            ) : (
+                              <div>
+                                <span>{formatRupiah(pkg.price)}</span>
+                                <span className="block text-[10px] text-slate-400 font-normal">/ orang</span>
+                              </div>
+                            )}
+                          </td>
                           <td className="p-4 font-semibold text-slate-800">{pkg.durationDays} Hari</td>
                           <td className="p-4">
                             <div className="space-y-0.5">
@@ -737,19 +878,206 @@ export default function TravelPackagesPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* ─── Skema Harga Paket (Tetap vs Custom) ─── */}
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-4">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Harga per Orang (Rp) *</label>
-                  <input
-                    type="number"
-                    required
-                    min="10000"
-                    placeholder="Contoh: 750000"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500"
-                  />
+                  <label className="block font-bold text-slate-800 text-sm mb-1">
+                    Metode Penentuan Harga *
+                  </label>
+                  <p className="text-xs text-slate-500 mb-3">
+                    Pilih bagaimana harga paket wisata ini ditentukan untuk calon pelanggan.
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label
+                      className={`relative flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
+                        pricingType === "FIXED"
+                          ? "border-emerald-500 bg-emerald-50/40 ring-1 ring-emerald-500"
+                          : "border-slate-200 hover:bg-slate-50"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="pricingType"
+                        value="FIXED"
+                        checked={pricingType === "FIXED"}
+                        onChange={() => setPricingType("FIXED")}
+                        className="mt-0.5 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <div>
+                        <div className="font-bold text-slate-900 text-xs sm:text-sm">Harga Tetap</div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">
+                          Satu tarif harga flat per orang, tidak berubah berapapun jumlah peserta yang mendaftar.
+                        </div>
+                      </div>
+                    </label>
+
+                    <label
+                      className={`relative flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
+                        pricingType === "CUSTOM"
+                          ? "border-emerald-500 bg-emerald-50/40 ring-1 ring-emerald-500"
+                          : "border-slate-200 hover:bg-slate-50"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="pricingType"
+                        value="CUSTOM"
+                        checked={pricingType === "CUSTOM"}
+                        onChange={() => setPricingType("CUSTOM")}
+                        className="mt-0.5 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <div>
+                        <div className="font-bold text-slate-900 text-xs sm:text-sm">Harga Custom (Bertingkat)</div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">
+                          Variasi harga per orang berdasarkan rentang peserta (misal: 1 pax, 2-4 pax, 5-8 pax).
+                        </div>
+                      </div>
+                    </label>
+                  </div>
                 </div>
+
+                {/* Sub-form: FIXED Pricing */}
+                {pricingType === "FIXED" ? (
+                  <div className="pt-2 border-t border-slate-100">
+                    <label className="block font-bold text-slate-700 text-xs mb-1">
+                      Harga per Orang (Rp) *
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="10000"
+                      placeholder="Contoh: 750000"
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500 text-sm font-semibold"
+                    />
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Total pesanan pelanggan = Jumlah peserta × Harga per orang.
+                    </p>
+                  </div>
+                ) : (
+                  /* Sub-form: CUSTOM Pricing (Tiered) */
+                  <div className="pt-2 border-t border-slate-100 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="font-bold text-slate-700 text-xs block">
+                          Tabel Variasi Rentang Harga Peserta *
+                        </span>
+                        <span className="text-[11px] text-slate-500">
+                          Tentukan harga per orang sesuai jumlah rombongan. Rentang tidak boleh tumpang tindih.
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAddTier}
+                        className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-bold flex items-center gap-1 transition-all border border-emerald-200"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Tambah Rentang</span>
+                      </button>
+                    </div>
+
+                    <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+                          <tr>
+                            <th className="py-2.5 px-3">Min. Peserta</th>
+                            <th className="py-2.5 px-3">Maks. Peserta</th>
+                            <th className="py-2.5 px-3">Harga / Orang (Rp)</th>
+                            <th className="py-2.5 px-2 text-center w-12">Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {priceTiers.map((tier, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50/60">
+                              <td className="py-2 px-3">
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    required
+                                    placeholder="Min"
+                                    value={tier.minPax}
+                                    onChange={(e) => handleTierChange(idx, "minPax", e.target.value)}
+                                    className="w-20 px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-900 font-semibold focus:outline-none focus:border-emerald-500"
+                                  />
+                                  <span className="text-slate-400 text-[11px]">pax</span>
+                                </div>
+                              </td>
+                              <td className="py-2 px-3">
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    required
+                                    placeholder="Maks"
+                                    value={tier.maxPax}
+                                    onChange={(e) => handleTierChange(idx, "maxPax", e.target.value)}
+                                    className="w-20 px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-900 font-semibold focus:outline-none focus:border-emerald-500"
+                                  />
+                                  <span className="text-slate-400 text-[11px]">pax</span>
+                                </div>
+                              </td>
+                              <td className="py-2 px-3">
+                                <div className="relative">
+                                  <span className="absolute left-2.5 top-1.5 text-slate-400 text-xs font-semibold">Rp</span>
+                                  <input
+                                    type="number"
+                                    min="1000"
+                                    required
+                                    placeholder="Harga/org"
+                                    value={tier.price}
+                                    onChange={(e) => handleTierChange(idx, "price", e.target.value)}
+                                    className="w-full pl-8 pr-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-900 font-bold focus:outline-none focus:border-emerald-500"
+                                  />
+                                </div>
+                              </td>
+                              <td className="py-2 px-2 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveTier(idx)}
+                                  disabled={priceTiers.length <= 1}
+                                  className={`p-1.5 rounded-lg transition-colors ${
+                                    priceTiers.length <= 1
+                                      ? "text-slate-300 cursor-not-allowed"
+                                      : "text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                                  }`}
+                                  title={priceTiers.length <= 1 ? "Minimal 1 rentang harga" : "Hapus rentang"}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Lowest Price Preview Badge */}
+                    {(() => {
+                      const validPrices = priceTiers
+                        .map((t) => Number(t.price))
+                        .filter((p) => !isNaN(p) && p > 0);
+                      const minPrice = validPrices.length > 0 ? Math.min(...validPrices) : 0;
+
+                      return (
+                        <div className="flex items-center justify-between text-xs bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-2.5">
+                          <span className="text-emerald-800 font-medium">
+                            Label harga di katalog / kartu paket:
+                          </span>
+                          <span className="font-extrabold text-emerald-900">
+                            Mulai dari {minPrice > 0 ? formatRupiah(minPrice) : "Rp0"}
+                          </span>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+
+              {/* ─── Durasi & Kapasitas ─── */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Durasi (Hari) *</label>
                   <input

@@ -121,6 +121,9 @@ export async function POST(request: Request) {
 
     const pkg = await prisma.package.findUnique({
       where: { id: packageId },
+      include: {
+        priceTiers: { orderBy: { minPax: "asc" } },
+      },
     });
 
     if (!pkg) {
@@ -161,9 +164,34 @@ export async function POST(request: Request) {
     }
 
     const count = parseInt(participantCount);
+    let unitPrice = pkg.price;
+    const pricingType = pkg.pricingType || "FIXED";
+
+    // Validasi & penentuan harga berdasarkan metode pricing (Harga Tetap vs Harga Custom)
+    if (pricingType === "CUSTOM") {
+      const matchedTier = pkg.priceTiers?.find(
+        (t) => count >= t.minPax && count <= t.maxPax
+      );
+
+      if (!matchedTier) {
+        const availableRanges = (pkg.priceTiers || [])
+          .map((t) => `${t.minPax}–${t.maxPax} pax (Rp${t.price.toLocaleString("id-ID")}/org)`)
+          .join(", ");
+        return NextResponse.json(
+          {
+            error: `Jumlah peserta (${count} orang) tidak termasuk dalam rentang harga yang tersedia untuk paket ini (${availableRanges || "belum ada rentang harga"}). Pemesanan ditolak.`,
+          },
+          { status: 400 }
+        );
+      }
+
+      unitPrice = matchedTier.price;
+    }
+
     const adminFeePerPerson = 5000;
     const adminFeeTotal = adminFeePerPerson * count;
-    const totalPrice = (pkg.price * count) + adminFeeTotal;
+    const subtotal = unitPrice * count;
+    const totalPrice = subtotal + adminFeeTotal;
     const bookingCode = `WST-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
     // Determine payment scheme chosen by customer (DP vs Full Payment)
@@ -177,6 +205,8 @@ export async function POST(request: Request) {
         customerId: session.userId,
         packageId,
         participantCount: count,
+        pricingType,
+        pricePerPerson: unitPrice,
         totalPrice,
         adminFeeTotal,
         dpAmount,
