@@ -47,9 +47,6 @@ async function getFeaturedPackages(): Promise<PackageData[]> {
             participantCount: true,
           },
         },
-        priceTiers: {
-          orderBy: { minPax: "asc" },
-        },
         _count: { select: { bookings: true } },
       },
       orderBy: [
@@ -58,15 +55,15 @@ async function getFeaturedPackages(): Promise<PackageData[]> {
       ],
     });
 
-    const enriched = packages.map((pkg) => {
-      const allReviews = pkg.trips?.flatMap((t) => t.reviews) || [];
+    const enriched = packages.map((pkg: any) => {
+      const allReviews = pkg.trips?.flatMap((t: any) => t.reviews) || [];
       const reviewCount = allReviews.length;
       const avgRating = reviewCount > 0
-        ? parseFloat((allReviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount).toFixed(1))
+        ? parseFloat((allReviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviewCount).toFixed(1))
         : 5.0;
 
       // Total keseluruhan orang yang memesan trip ini (kumulatif seluruh batch/riwayat)
-      const totalBookedPax = pkg.bookings.reduce((sum, b) => sum + (b.participantCount || 1), 0);
+      const totalBookedPax = pkg.bookings.reduce((sum: number, b: any) => sum + (b.participantCount || 1), 0);
 
       const { trips, bookings, ...rest } = pkg;
       return {
