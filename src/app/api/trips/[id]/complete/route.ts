@@ -51,8 +51,8 @@ export async function POST(
       data: { status: "COMPLETED" },
     });
 
-    // Update package status to COMPLETED
-    if (trip.packageId) {
+    // Update package status to COMPLETED hanya untuk OPEN TRIP (Private Trip tetap aktif terus)
+    if (trip.packageId && trip.package?.tripType !== "PRIVATE") {
       await prisma.package.update({
         where: { id: trip.packageId },
         data: { status: "COMPLETED" },

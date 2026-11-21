@@ -60,6 +60,9 @@ export default function TravelPackagesPage() {
   const [departureDate, setDepartureDate] = useState("");
   const [bookingDeadline, setBookingDeadline] = useState("");
   const [pkgStatus, setPkgStatus] = useState("PUBLISHED");
+  const [tripType, setTripType] = useState<"OPEN" | "PRIVATE">("OPEN");
+  const [dailyQuota, setDailyQuota] = useState("");
+  const [availableDays, setAvailableDays] = useState<"ALL_DAYS" | "WEEKDAY" | "WEEKEND">("ALL_DAYS");
   const [submitting, setSubmitting] = useState(false);
   const [coverImageUploading, setCoverImageUploading] = useState(false);
 
@@ -177,6 +180,9 @@ export default function TravelPackagesPage() {
     setDpPercentage("");
     setCategory("WISATA ALAM");
     setPkgStatus("PUBLISHED");
+    setTripType("OPEN");
+    setDailyQuota("");
+    setAvailableDays("ALL_DAYS");
     setDepartureDate("");
     setBookingDeadline("");
     setModalOpen(true);
@@ -225,6 +231,9 @@ export default function TravelPackagesPage() {
     } catch { setCheckpointRouteStr(""); }
     setDpPercentage(pkg.dpPercentage?.toString() || "0");
     setCategory(pkg.category || "WISATA ALAM");
+    setTripType(pkg.tripType === "PRIVATE" ? "PRIVATE" : "OPEN");
+    setDailyQuota(pkg.dailyQuota?.toString() || "");
+    setAvailableDays(pkg.availableDays || "ALL_DAYS");
     if (pkg.departureDate) {
       setDepartureDate(new Date(pkg.departureDate).toISOString().substring(0, 10));
     }
@@ -245,11 +254,21 @@ export default function TravelPackagesPage() {
 
     const facList = facilities.split(",").map((s) => s.trim()).filter(Boolean);
 
-    // Validate: booking deadline must be before departure
-    if (bookingDeadline && departureDate && bookingDeadline >= departureDate) {
+    // Validate: booking deadline must be before departure (only for OPEN trip)
+    if (tripType === "OPEN" && bookingDeadline && departureDate && bookingDeadline >= departureDate) {
       toast.warning("Batas waktu pemesanan harus sebelum tanggal keberangkatan.");
       setSubmitting(false);
       return;
+    }
+
+    // Validate dailyQuota for PRIVATE trip
+    if (tripType === "PRIVATE") {
+      const dq = parseInt(dailyQuota);
+      if (isNaN(dq) || dq < 1) {
+        toast.warning("Kuota harian (maks. peserta per hari) wajib diisi untuk Private Trip.");
+        setSubmitting(false);
+        return;
+      }
     }
 
     // Validate pricing
@@ -336,6 +355,9 @@ export default function TravelPackagesPage() {
           price: finalPrice,
           pricingType,
           priceTiers: pricingType === "CUSTOM" ? formattedTiers : [],
+          tripType,
+          dailyQuota: tripType === "PRIVATE" ? parseInt(dailyQuota) : null,
+          availableDays: tripType === "PRIVATE" ? availableDays : "ALL_DAYS",
           durationDays: parseInt(durationDays),
           capacity: parseInt(capacity),
           vehicle,
@@ -346,8 +368,8 @@ export default function TravelPackagesPage() {
           checkpointRoute: checkpointRoute.length > 0 ? checkpointRoute : null,
           dpPercentage: parseInt(dpPercentage) || 0,
           category,
-          departureDate: departureDate || undefined,
-          bookingDeadline: bookingDeadline || undefined,
+          departureDate: tripType === "OPEN" ? (departureDate || undefined) : undefined,
+          bookingDeadline: tripType === "OPEN" ? (bookingDeadline || undefined) : undefined,
           // Sertakan status agar perubahan INACTIVE → PUBLISHED tersimpan
           status: pkgStatus,
         }),
@@ -571,16 +593,39 @@ export default function TravelPackagesPage() {
 
                       {/* Date Info */}
                       <div className="text-[11px] text-slate-500 space-y-1 bg-slate-50 rounded-xl p-3 border border-slate-100">
-                        <div className="flex items-center justify-between">
-                          <span className="flex items-center gap-1"><Calendar className="w-3 h-3 text-emerald-500" /> Keberangkatan:</span>
-                          <span className="font-bold text-slate-700">{pkg.departureDate ? formatDate(pkg.departureDate) : "—"}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-rose-400" /> Batas Pesan:</span>
-                          <span className={`font-bold ${isBookingClosed(pkg) ? "text-rose-600" : "text-slate-700"}`}>
-                            {pkg.bookingDeadline ? formatDate(pkg.bookingDeadline) : (pkg.departureDate ? `H-1` : "—")}
-                          </span>
-                        </div>
+                        {pkg.tripType === "PRIVATE" ? (
+                          <>
+                            <div className="flex items-center justify-between">
+                              <span className="flex items-center gap-1 font-semibold text-indigo-700">
+                                <Calendar className="w-3 h-3 text-indigo-500" /> Jenis Trip:
+                              </span>
+                              <span className="font-bold text-indigo-700">Private Trip</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-500">Kuota / Hari:</span>
+                              <span className="font-bold text-slate-800">{pkg.dailyQuota || pkg.capacity} Pax</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-500">Kategori Hari:</span>
+                              <span className="font-semibold text-slate-700">
+                                {pkg.availableDays === "WEEKDAY" ? "Week Day (Sen–Jum)" : pkg.availableDays === "WEEKEND" ? "Week End (Sab–Min)" : "Setiap Hari"}
+                              </span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex items-center justify-between">
+                              <span className="flex items-center gap-1"><Calendar className="w-3 h-3 text-emerald-500" /> Keberangkatan:</span>
+                              <span className="font-bold text-slate-700">{pkg.departureDate ? formatDate(pkg.departureDate) : "—"}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-rose-400" /> Batas Pesan:</span>
+                              <span className={`font-bold ${isBookingClosed(pkg) ? "text-rose-600" : "text-slate-700"}`}>
+                                {pkg.bookingDeadline ? formatDate(pkg.bookingDeadline) : (pkg.departureDate ? `H-1` : "—")}
+                              </span>
+                            </div>
+                          </>
+                        )}
                       </div>
 
 
@@ -697,16 +742,26 @@ export default function TravelPackagesPage() {
                           </td>
                           <td className="p-4 font-semibold text-slate-800">{pkg.durationDays} Hari</td>
                           <td className="p-4">
-                            <div className="space-y-0.5">
-                              <div className="flex items-center gap-1 text-[11px]">
-                                <Calendar className="w-3 h-3 text-emerald-500" />
-                                <span className="font-bold text-slate-700">{pkg.departureDate ? formatDate(pkg.departureDate) : "—"}</span>
+                            {pkg.tripType === "PRIVATE" ? (
+                              <div className="space-y-0.5">
+                                <div className="font-bold text-indigo-700 text-[11px]">Private Trip</div>
+                                <div className="text-[10px] text-slate-500">
+                                  {pkg.availableDays === "WEEKDAY" ? "Week Day (Sen–Jum)" : pkg.availableDays === "WEEKEND" ? "Week End (Sab–Min)" : "Setiap Hari"}
+                                </div>
+                                <div className="text-[10px] text-slate-400">Kuota: {pkg.dailyQuota || pkg.capacity}/hari</div>
                               </div>
-                              <div className={`flex items-center gap-1 text-[11px] ${isBookingClosed(pkg) ? "text-rose-600 font-bold" : "text-slate-500"}`}>
-                                <Clock className="w-3 h-3" />
-                                <span>Batas: {pkg.bookingDeadline ? formatDate(pkg.bookingDeadline) : "H-1"}</span>
+                            ) : (
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-1 text-[11px]">
+                                  <Calendar className="w-3 h-3 text-emerald-500" />
+                                  <span className="font-bold text-slate-700">{pkg.departureDate ? formatDate(pkg.departureDate) : "—"}</span>
+                                </div>
+                                <div className={`flex items-center gap-1 text-[11px] ${isBookingClosed(pkg) ? "text-rose-600 font-bold" : "text-slate-500"}`}>
+                                  <Clock className="w-3 h-3" />
+                                  <span>Batas: {pkg.bookingDeadline ? formatDate(pkg.bookingDeadline) : "H-1"}</span>
+                                </div>
                               </div>
-                            </div>
+                            )}
                           </td>
                           <td className="p-4">
                             <span className="font-bold text-emerald-700">{paxFilled}</span> / {pkg.capacity} Pax
@@ -847,36 +902,171 @@ export default function TravelPackagesPage() {
                 </div>
               </div>
 
-              {/* ─── Jadwal & Batas Waktu ─── */}
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4 space-y-3">
-                <p className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5" /> Jadwal & Batas Waktu Pemesanan
+              {/* ─── Jenis Trip: Open / Private ─── */}
+              <div className="rounded-2xl border border-indigo-200 bg-indigo-50/40 p-4 space-y-3">
+                <p className="text-[11px] font-extrabold uppercase tracking-wider text-indigo-800 flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5" /> Jenis Trip
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Tanggal Mulai Trip (Keberangkatan) *</label>
+                  <label
+                    className={`relative flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${tripType === "OPEN"
+                      ? "border-indigo-500 bg-indigo-50/60 ring-1 ring-indigo-500"
+                      : "border-slate-200 hover:bg-slate-50"
+                      }`}
+                  >
                     <input
-                      type="date"
-                      required
-                      value={departureDate}
-                      onChange={(e) => setDepartureDate(e.target.value)}
-                      min={new Date().toISOString().substring(0, 10)}
-                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500"
+                      type="radio"
+                      name="tripType"
+                      value="OPEN"
+                      checked={tripType === "OPEN"}
+                      onChange={() => setTripType("OPEN")}
+                      className="mt-0.5 text-indigo-600 focus:ring-indigo-500"
                     />
+                    <div>
+                      <div className="font-bold text-slate-900 text-xs sm:text-sm">Open Trip</div>
+                    </div>
+                  </label>
+                  <label
+                    className={`relative flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${tripType === "PRIVATE"
+                      ? "border-indigo-500 bg-indigo-50/60 ring-1 ring-indigo-500"
+                      : "border-slate-200 hover:bg-slate-50"
+                      }`}
+                  >
+                    <input
+                      type="radio"
+                      name="tripType"
+                      value="PRIVATE"
+                      checked={tripType === "PRIVATE"}
+                      onChange={() => setTripType("PRIVATE")}
+                      className="mt-0.5 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <div>
+                      <div className="font-bold text-slate-900 text-xs sm:text-sm">Private Trip</div>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Daily Quota & Kategori Hari Tersedia — hanya tampil untuk PRIVATE */}
+                {tripType === "PRIVATE" && (
+                  <div className="pt-2 border-t border-indigo-100 space-y-3">
+                    <div>
+                      <label className="block font-bold text-slate-700 text-xs mb-1">
+                        Kuota Maksimal Peserta per Hari *
+                      </label>
+                      <input
+                        type="number"
+                        required={tripType === "PRIVATE"}
+                        min="1"
+                        placeholder="Contoh: 6"
+                        value={dailyQuota}
+                        onChange={(e) => setDailyQuota(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-indigo-200 text-slate-900 focus:outline-none focus:border-indigo-500 font-semibold"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-700 text-xs mb-1.5">
+                        Kategori Hari Keberangkatan yang Dibuka *
+                      </label>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <label
+                          className={`flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer text-xs transition-all ${availableDays === "WEEKDAY"
+                            ? "border-indigo-500 bg-white ring-1 ring-indigo-500 font-bold text-indigo-900"
+                            : "border-slate-200 bg-white/70 text-slate-700 hover:bg-white"
+                            }`}
+                        >
+                          <input
+                            type="radio"
+                            name="availableDays"
+                            value="WEEKDAY"
+                            checked={availableDays === "WEEKDAY"}
+                            onChange={() => setAvailableDays("WEEKDAY")}
+                            className="text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <span>Week Day (Sen–Jum)</span>
+                        </label>
+
+                        <label
+                          className={`flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer text-xs transition-all ${availableDays === "WEEKEND"
+                            ? "border-indigo-500 bg-white ring-1 ring-indigo-500 font-bold text-indigo-900"
+                            : "border-slate-200 bg-white/70 text-slate-700 hover:bg-white"
+                            }`}
+                        >
+                          <input
+                            type="radio"
+                            name="availableDays"
+                            value="WEEKEND"
+                            checked={availableDays === "WEEKEND"}
+                            onChange={() => setAvailableDays("WEEKEND")}
+                            className="text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <span>Week End (Sab–Min)</span>
+                        </label>
+
+                        <label
+                          className={`flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer text-xs transition-all ${availableDays === "ALL_DAYS"
+                            ? "border-indigo-500 bg-white ring-1 ring-indigo-500 font-bold text-indigo-900"
+                            : "border-slate-200 bg-white/70 text-slate-700 hover:bg-white"
+                            }`}
+                        >
+                          <input
+                            type="radio"
+                            name="availableDays"
+                            value="ALL_DAYS"
+                            checked={availableDays === "ALL_DAYS"}
+                            onChange={() => setAvailableDays("ALL_DAYS")}
+                            className="text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <span>Setiap Hari</span>
+                        </label>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Batas Waktu Pemesanan *</label>
-                    <input
-                      type="date"
-                      required
-                      value={bookingDeadline}
-                      onChange={(e) => setBookingDeadline(e.target.value)}
-                      max={departureDate ? new Date(new Date(departureDate).getTime() - 1 * 86400000).toISOString().substring(0, 10) : undefined}
-                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500"
-                    />
+                )}
+              </div>
+
+              {/* ─── Jadwal & Batas Waktu (hanya untuk OPEN trip) ─── */}
+              {tripType === "OPEN" ? (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4 space-y-3">
+                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5" /> Jadwal & Batas Waktu Pemesanan
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Tanggal Mulai Trip (Keberangkatan) *</label>
+                      <input
+                        type="date"
+                        required
+                        value={departureDate}
+                        onChange={(e) => setDepartureDate(e.target.value)}
+                        min={new Date().toISOString().substring(0, 10)}
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Batas Waktu Pemesanan *</label>
+                      <input
+                        type="date"
+                        required
+                        value={bookingDeadline}
+                        onChange={(e) => setBookingDeadline(e.target.value)}
+                        max={departureDate ? new Date(new Date(departureDate).getTime() - 1 * 86400000).toISOString().substring(0, 10) : undefined}
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="rounded-2xl border border-indigo-100 bg-indigo-50/30 p-3.5 flex items-start gap-2.5">
+                  <Calendar className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-bold text-indigo-800">Tanggal Fleksibel</p>
+                    <p className="text-[11px] text-indigo-600 mt-0.5">
+                      Customer bebas memilih tanggal mulai sendiri saat memesan. Kuota per hari akan diperiksa secara otomatis.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* ─── Skema Harga Paket (Tetap vs Custom) ─── */}
               <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-4">
@@ -890,11 +1080,10 @@ export default function TravelPackagesPage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <label
-                      className={`relative flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
-                        pricingType === "FIXED"
-                          ? "border-emerald-500 bg-emerald-50/40 ring-1 ring-emerald-500"
-                          : "border-slate-200 hover:bg-slate-50"
-                      }`}
+                      className={`relative flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${pricingType === "FIXED"
+                        ? "border-emerald-500 bg-emerald-50/40 ring-1 ring-emerald-500"
+                        : "border-slate-200 hover:bg-slate-50"
+                        }`}
                     >
                       <input
                         type="radio"
@@ -906,18 +1095,14 @@ export default function TravelPackagesPage() {
                       />
                       <div>
                         <div className="font-bold text-slate-900 text-xs sm:text-sm">Harga Tetap</div>
-                        <div className="text-[11px] text-slate-500 mt-0.5">
-                          Satu tarif harga flat per orang, tidak berubah berapapun jumlah peserta yang mendaftar.
-                        </div>
                       </div>
                     </label>
 
                     <label
-                      className={`relative flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
-                        pricingType === "CUSTOM"
-                          ? "border-emerald-500 bg-emerald-50/40 ring-1 ring-emerald-500"
-                          : "border-slate-200 hover:bg-slate-50"
-                      }`}
+                      className={`relative flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${pricingType === "CUSTOM"
+                        ? "border-emerald-500 bg-emerald-50/40 ring-1 ring-emerald-500"
+                        : "border-slate-200 hover:bg-slate-50"
+                        }`}
                     >
                       <input
                         type="radio"
@@ -929,9 +1114,6 @@ export default function TravelPackagesPage() {
                       />
                       <div>
                         <div className="font-bold text-slate-900 text-xs sm:text-sm">Harga Custom (Bertingkat)</div>
-                        <div className="text-[11px] text-slate-500 mt-0.5">
-                          Variasi harga per orang berdasarkan rentang peserta (misal: 1 pax, 2-4 pax, 5-8 pax).
-                        </div>
                       </div>
                     </label>
                   </div>
@@ -952,9 +1134,6 @@ export default function TravelPackagesPage() {
                       onChange={(e) => setPrice(e.target.value)}
                       className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500 text-sm font-semibold"
                     />
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      Total pesanan pelanggan = Jumlah peserta × Harga per orang.
-                    </p>
                   </div>
                 ) : (
                   /* Sub-form: CUSTOM Pricing (Tiered) */
@@ -965,7 +1144,7 @@ export default function TravelPackagesPage() {
                           Tabel Variasi Rentang Harga Peserta *
                         </span>
                         <span className="text-[11px] text-slate-500">
-                          Tentukan harga per orang sesuai jumlah rombongan. Rentang tidak boleh tumpang tindih.
+                          Tentukan harga per orang sesuai jumlah rombongan.
                         </span>
                       </div>
                       <button
@@ -1038,11 +1217,10 @@ export default function TravelPackagesPage() {
                                   type="button"
                                   onClick={() => handleRemoveTier(idx)}
                                   disabled={priceTiers.length <= 1}
-                                  className={`p-1.5 rounded-lg transition-colors ${
-                                    priceTiers.length <= 1
-                                      ? "text-slate-300 cursor-not-allowed"
-                                      : "text-slate-400 hover:text-rose-600 hover:bg-rose-50"
-                                  }`}
+                                  className={`p-1.5 rounded-lg transition-colors ${priceTiers.length <= 1
+                                    ? "text-slate-300 cursor-not-allowed"
+                                    : "text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                                    }`}
                                   title={priceTiers.length <= 1 ? "Minimal 1 rentang harga" : "Hapus rentang"}
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -1064,7 +1242,7 @@ export default function TravelPackagesPage() {
                       return (
                         <div className="flex items-center justify-between text-xs bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-2.5">
                           <span className="text-emerald-800 font-medium">
-                            Label harga di katalog / kartu paket:
+                            Label harga di katalog:
                           </span>
                           <span className="font-extrabold text-emerald-900">
                             Mulai dari {minPrice > 0 ? formatRupiah(minPrice) : "Rp0"}
@@ -1084,7 +1262,7 @@ export default function TravelPackagesPage() {
                     type="number"
                     required
                     min="1"
-                    placeholder="Contoh: 3"
+                    placeholder="Contoh: 10"
                     value={durationDays}
                     onChange={(e) => setDurationDays(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500"

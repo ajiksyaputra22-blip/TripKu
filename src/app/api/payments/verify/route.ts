@@ -76,11 +76,15 @@ export async function POST(request: Request) {
       });
 
       if (!activeTrip) {
+        // Untuk PRIVATE TRIP: scheduleDate diambil dari payment.booking.selectedDate
+        // Untuk OPEN TRIP: scheduleDate diambil dari payment.booking.package.departureDate
+        const bookingDateSchedule = payment.booking.selectedDate || payment.booking.package.departureDate;
+
         activeTrip = await prisma.trip.create({
           data: {
             packageId: payment.booking.packageId,
             bookingId: payment.bookingId,
-            scheduleDate: payment.booking.package.departureDate,
+            scheduleDate: bookingDateSchedule,
             destination: payment.booking.package.destination,
             vehicle: payment.booking.package.vehicle,
             operationalNotes: `Perjalanan untuk pemesanan ${payment.booking.bookingCode}.`,

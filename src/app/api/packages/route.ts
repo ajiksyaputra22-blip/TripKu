@@ -281,6 +281,9 @@ export async function POST(request: Request) {
       price,
       pricingType: rawPricingType,
       priceTiers: rawPriceTiers,
+      tripType: rawTripType,
+      dailyQuota: rawDailyQuota,
+      availableDays: rawAvailableDays,
       departureDate,
       bookingDeadline,
       durationDays,
@@ -297,6 +300,9 @@ export async function POST(request: Request) {
     } = body;
 
     const pricingType = rawPricingType === "CUSTOM" ? "CUSTOM" : "FIXED";
+    const tripType = rawTripType === "PRIVATE" ? "PRIVATE" : "OPEN";
+    const dailyQuota = tripType === "PRIVATE" ? (parseInt(rawDailyQuota) || null) : null;
+    const availableDays = tripType === "PRIVATE" ? (["ALL_DAYS", "WEEKDAY", "WEEKEND"].includes(rawAvailableDays) ? rawAvailableDays : "ALL_DAYS") : "ALL_DAYS";
     let parsedPrice = parseFloat(price || "0");
     const formattedTiers: { minPax: number; maxPax: number; price: number }[] = [];
 
@@ -431,6 +437,9 @@ export async function POST(request: Request) {
         province: province || "Indonesia",
         price: parsedPrice,
         pricingType,
+        tripType,
+        dailyQuota,
+        availableDays,
         ...(pricingType === "CUSTOM" && formattedTiers.length > 0
           ? {
               priceTiers: {

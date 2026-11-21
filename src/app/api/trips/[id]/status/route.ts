@@ -190,7 +190,7 @@ export async function PATCH(
         data: { status: "COMPLETED" },
       });
 
-      if (trip.packageId) {
+      if (trip.packageId && trip.package?.tripType !== "PRIVATE") {
         await prisma.package.update({
           where: { id: trip.packageId },
           data: { status: "COMPLETED" },

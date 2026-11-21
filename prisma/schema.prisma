@@ -108,6 +108,9 @@ model Package {
   category        String    @default("WISATA_ALAM")
   status          String    @default("PUBLISHED")
   pricingType     String    @default("FIXED")
+  tripType        String    @default("OPEN")  // OPEN | PRIVATE
+  dailyQuota      Int?      // Kuota peserta per hari (hanya untuk PRIVATE)
+  availableDays   String    @default("ALL_DAYS") // ALL_DAYS | WEEKDAY | WEEKEND
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   bookings        Booking[]
@@ -144,6 +147,7 @@ model Booking {
   dpAmount         Float         @default(0)
   dpPaid           Boolean       @default(false)
   notes            String?
+  selectedDate     DateTime?     // Tanggal mulai dipilih customer (PRIVATE TRIP)
   status           String        @default("WAITING_PAYMENT")
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt

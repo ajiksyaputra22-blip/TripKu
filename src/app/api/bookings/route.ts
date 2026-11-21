@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { packageId, participantCount, participants, notes, paymentPlan } = body;
+    const { packageId, participantCount, participants, notes, paymentPlan, selectedDate } = body;
 
     if (!packageId || !participantCount || !participants || !Array.isArray(participants)) {
       return NextResponse.json(
@@ -119,7 +119,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const pkg = await prisma.package.findUnique({
+    const pkg: any = await prisma.package.findUnique({
       where: { id: packageId },
       include: {
         priceTiers: { orderBy: { minPax: "asc" } },
@@ -130,37 +130,153 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Paket wisata tidak ditemukan." }, { status: 404 });
     }
 
-    // REQ-3.1: Batas waktu pemesanan — gunakan bookingDeadline jika ada, fallback H-1 dari departureDate
+    const isPrivateTrip = pkg.tripType === "PRIVATE";
+
+    // REQ-3.1: Batas waktu pemesanan (HANYA BERLAKU UNTUK OPEN TRIP)
+    // Untuk PRIVATE TRIP: paket aktif terus & tanggal bebas dipilih customer
     const now = new Date();
-    let isExpired = false;
-    if (pkg.bookingDeadline) {
-      const deadline = new Date(pkg.bookingDeadline);
-      if (deadline.getUTCHours() === 0 && deadline.getUTCMinutes() === 0) {
-        deadline.setUTCHours(23, 59, 59, 999);
+    if (!isPrivateTrip) {
+      let isExpired = false;
+      if (pkg.bookingDeadline) {
+        const deadline = new Date(pkg.bookingDeadline);
+        if (deadline.getUTCHours() === 0 && deadline.getUTCMinutes() === 0) {
+          deadline.setUTCHours(23, 59, 59, 999);
+        }
+        isExpired = now.getTime() > deadline.getTime();
+      } else if (pkg.departureDate) {
+        isExpired = new Date(pkg.departureDate).getTime() - now.getTime() <= 1 * 24 * 60 * 60 * 1000;
       }
-      isExpired = now.getTime() > deadline.getTime();
-    } else if (pkg.departureDate) {
-      isExpired = new Date(pkg.departureDate).getTime() - now.getTime() <= 1 * 24 * 60 * 60 * 1000;
-    }
 
-    if (pkg.status !== "PUBLISHED" || isExpired) {
-      if (pkg.status === "PUBLISHED" && isExpired) {
-        await prisma.package.update({
-          where: { id: pkg.id },
-          data: { status: "INACTIVE" },
-        });
+      if (pkg.status !== "PUBLISHED" || isExpired) {
+        if (pkg.status === "PUBLISHED" && isExpired) {
+          await prisma.package.update({
+            where: { id: pkg.id },
+            data: { status: "INACTIVE" },
+          });
+        }
+        return NextResponse.json(
+          { error: "Batas waktu pemesanan untuk paket ini telah ditutup. Paket sudah tidak dapat dipesan." },
+          { status: 400 }
+        );
       }
-      return NextResponse.json(
-        { error: "Batas waktu pemesanan untuk paket ini telah ditutup. Paket sudah tidak dapat dipesan." },
-        { status: 400 }
-      );
-    }
 
-    if (pkg.quotaLeft < participantCount) {
-      return NextResponse.json(
-        { error: `Sisa kuota paket tidak mencukupi. Sisa kuota: ${pkg.quotaLeft} orang.` },
-        { status: 400 }
-      );
+      if (pkg.quotaLeft < participantCount) {
+        return NextResponse.json(
+          { error: `Sisa kuota paket tidak mencukupi. Sisa kuota: ${pkg.quotaLeft} orang.` },
+          { status: 400 }
+        );
+      }
+    } else {
+      // Validasi khusus PRIVATE TRIP
+      if (pkg.status !== "PUBLISHED") {
+        return NextResponse.json(
+          { error: "Paket private trip ini sedang tidak aktif." },
+          { status: 400 }
+        );
+      }
+
+      if (!selectedDate) {
+        return NextResponse.json(
+          { error: "Silakan pilih tanggal keberangkatan untuk paket Private Trip." },
+          { status: 400 }
+        );
+      }
+
+      const reqDate = new Date(selectedDate);
+      if (isNaN(reqDate.getTime())) {
+        return NextResponse.json(
+          { error: "Format tanggal keberangkatan tidak valid." },
+          { status: 400 }
+        );
+      }
+
+      // Pastikan tanggal tidak di masa lalu
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      if (reqDate.getTime() < todayStart.getTime()) {
+        return NextResponse.json(
+          { error: "Tanggal keberangkatan tidak boleh di masa lampau." },
+          { status: 400 }
+        );
+      }
+
+      const durationDays = pkg.durationDays || 1;
+      const reqEnd = new Date(reqDate);
+      reqEnd.setUTCDate(reqEnd.getUTCDate() + durationDays - 1);
+
+      // Cek kategori hari: ALL_DAYS | WEEKDAY | WEEKEND
+      const allowedCategory = pkg.availableDays || "ALL_DAYS";
+      const checkCur = new Date(reqDate);
+      while (checkCur <= reqEnd) {
+        const dayOfWeek = checkCur.getUTCDay();
+        const isWeekendDay = dayOfWeek === 0 || dayOfWeek === 6;
+        if (allowedCategory === "WEEKDAY" && isWeekendDay) {
+          return NextResponse.json(
+            { error: "Paket ini hanya dapat dipesan untuk hari kerja (Senin - Jumat / Week Day). Tanggal yang Anda pilih mencakup akhir pekan." },
+            { status: 400 }
+          );
+        } else if (allowedCategory === "WEEKEND" && !isWeekendDay) {
+          return NextResponse.json(
+            { error: "Paket ini hanya dapat dipesan untuk akhir pekan (Sabtu - Minggu / Week End). Tanggal yang Anda pilih mencakup hari kerja." },
+            { status: 400 }
+          );
+        }
+        checkCur.setUTCDate(checkCur.getUTCDate() + 1);
+      }
+
+      // Hitung occupancy pada hari-hari yang overlap
+      const dailyQuota = pkg.dailyQuota || pkg.capacity || 10;
+      const earliestStart = new Date(reqDate);
+      earliestStart.setUTCDate(earliestStart.getUTCDate() - (durationDays - 1));
+
+      const overlappingBookings = await (prisma.booking as any).findMany({
+        where: {
+          packageId,
+          selectedDate: {
+            gte: earliestStart,
+            lte: reqEnd,
+          },
+          status: {
+            notIn: ["CANCELLED"],
+          },
+        },
+        select: {
+          participantCount: true,
+          selectedDate: true,
+        },
+      });
+
+      const dailyOccupancy: Record<string, number> = {};
+      for (const b of overlappingBookings) {
+        if (!b.selectedDate) continue;
+        const bStart = new Date(b.selectedDate);
+        const bEnd = new Date(bStart);
+        bEnd.setUTCDate(bEnd.getUTCDate() + durationDays - 1);
+
+        const cur = new Date(bStart);
+        while (cur <= bEnd) {
+          const key = cur.toISOString().substring(0, 10);
+          dailyOccupancy[key] = (dailyOccupancy[key] || 0) + b.participantCount;
+          cur.setUTCDate(cur.getUTCDate() + 1);
+        }
+      }
+
+      // Cek apakah ada hari yang melebihi kuota
+      const cur = new Date(reqDate);
+      while (cur <= reqEnd) {
+        const key = cur.toISOString().substring(0, 10);
+        const currentOcc = dailyOccupancy[key] || 0;
+        const remaining = dailyQuota - currentOcc;
+        if (currentOcc + parseInt(participantCount) > dailyQuota) {
+          return NextResponse.json(
+            {
+              error: `Kuota harian tidak mencukupi untuk tanggal ${key}. Sisa kuota pada hari tersebut hanya ${Math.max(0, remaining)} orang. Silakan pilih tanggal lain atau kurangi jumlah rombongan.`,
+            },
+            { status: 400 }
+          );
+        }
+        cur.setUTCDate(cur.getUTCDate() + 1);
+      }
     }
 
     const count = parseInt(participantCount);
@@ -170,12 +286,12 @@ export async function POST(request: Request) {
     // Validasi & penentuan harga berdasarkan metode pricing (Harga Tetap vs Harga Custom)
     if (pricingType === "CUSTOM") {
       const matchedTier = pkg.priceTiers?.find(
-        (t) => count >= t.minPax && count <= t.maxPax
+        (t: any) => count >= t.minPax && count <= t.maxPax
       );
 
       if (!matchedTier) {
         const availableRanges = (pkg.priceTiers || [])
-          .map((t) => `${t.minPax}–${t.maxPax} pax (Rp${t.price.toLocaleString("id-ID")}/org)`)
+          .map((t: any) => `${t.minPax}–${t.maxPax} pax (Rp${t.price.toLocaleString("id-ID")}/org)`)
           .join(", ");
         return NextResponse.json(
           {
@@ -199,7 +315,7 @@ export async function POST(request: Request) {
     const isDPChosen = (paymentPlan === "DP" || !paymentPlan) && dpPercentage > 0;
     const dpAmount = isDPChosen ? Math.ceil(totalPrice * dpPercentage / 100) : 0;
 
-    const newBooking = await prisma.booking.create({
+    const newBooking = await (prisma.booking as any).create({
       data: {
         bookingCode,
         customerId: session.userId,
@@ -212,6 +328,7 @@ export async function POST(request: Request) {
         dpAmount,
         dpPaid: false,
         notes,
+        selectedDate: isPrivateTrip && selectedDate ? new Date(selectedDate) : null,
         // If customer chose DP and package allows DP, set WAITING_DP_PAYMENT; otherwise WAITING_PAYMENT
         status: isDPChosen ? "WAITING_DP_PAYMENT" : "WAITING_PAYMENT",
         participants: {
@@ -236,7 +353,7 @@ export async function POST(request: Request) {
       await prisma.user.update({
         where: { id: session.userId },
         data: { phone: primaryPhone },
-      }).catch(() => {});
+      }).catch(() => { });
     }
 
     // REQ-4.1: Kuota trip TIDAK berkurang sebelum pembayaran/DP dikonfirmasi.

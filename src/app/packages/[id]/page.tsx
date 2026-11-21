@@ -151,44 +151,63 @@ export default async function PackageDetailPage({ params }: PageProps) {
         )}
       </div>
 
-      {/* Status Kuota */}
-      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
-        <span className="text-slate-500 font-medium">Sisa Kuota Tersedia:</span>
-        <span className={`font-bold ${pkg.quotaLeft <= 5 ? "text-rose-600" : "text-emerald-700"}`}>
-          {pkg.quotaLeft} dari {pkg.capacity} Pax
-        </span>
-      </div>
+      {/* Status Kuota & Jadwal */}
+      {pkg.tripType === "PRIVATE" ? (
+        <>
+          <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200/80 flex items-center justify-between text-xs">
+            <span className="text-indigo-800 font-semibold">Jenis Layanan:</span>
+            <span className="font-bold text-indigo-900 bg-white px-2 py-0.5 rounded border border-indigo-200">
+              Private Trip
+            </span>
+          </div>
 
-      {/* Total Pemesan Kumulatif */}
-      {totalBookedPax > 0 && (
-        <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-100 flex items-center justify-between text-xs">
-          <span className="text-emerald-800 font-medium flex items-center gap-1.5">
-            <Users className="w-3.5 h-3.5 text-emerald-600" />
-            Total Pemesan:
-          </span>
-          <span className="font-bold text-emerald-900">
-            {totalBookedPax} Terpesan (Semua Batch)
-          </span>
-        </div>
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
+            <span className="text-slate-500 font-medium">Kuota Peserta:</span>
+            <span className="font-bold text-slate-800">
+              Maks. {pkg.dailyQuota || pkg.capacity} Pax / Hari
+            </span>
+          </div>
+
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
+            <span className="text-slate-500 font-medium">Kategori Hari:</span>
+            <span className="font-bold text-slate-800">
+              {pkg.availableDays === "WEEKDAY" ? "Week Day (Senin–Jumat)" : pkg.availableDays === "WEEKEND" ? "Week End (Sabtu–Minggu)" : "Setiap Hari (Bebas)"}
+            </span>
+          </div>
+
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-xs">
+            <span className="text-slate-500 font-medium block mb-1">Tanggal Keberangkatan:</span>
+            <span className="font-bold text-emerald-700 block">
+              Bebas pilih tanggal sendiri saat memesan
+            </span>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
+            <span className="text-slate-500 font-medium">Sisa Kuota Tersedia:</span>
+            <span className={`font-bold ${pkg.quotaLeft <= 5 ? "text-rose-600" : "text-emerald-700"}`}>
+              {pkg.quotaLeft} dari {pkg.capacity} Pax
+            </span>
+          </div>
+
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
+            <span className="text-slate-500 font-medium">Jadwal Keberangkatan:</span>
+            <span className="font-bold text-slate-800">
+              {pkg.departureDate ? formatDate(pkg.departureDate) : "—"}
+            </span>
+          </div>
+
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
+            <span className="text-slate-500 font-medium">Batas Pemesanan:</span>
+            <span className="font-bold text-slate-800">
+              {pkg.bookingDeadline
+                ? formatDate(pkg.bookingDeadline)
+                : (pkg.departureDate ? `H-1 (${formatDate(new Date(new Date(pkg.departureDate).getTime() - 1 * 86400000))})` : "—")}
+            </span>
+          </div>
+        </>
       )}
-
-      {/* Departure Date */}
-      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
-        <span className="text-slate-500 font-medium">Jadwal Keberangkatan:</span>
-        <span className="font-bold text-slate-800">
-          {pkg.departureDate ? formatDate(pkg.departureDate) : "—"}
-        </span>
-      </div>
-
-      {/* Booking Deadline */}
-      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
-        <span className="text-slate-500 font-medium">Batas Pemesanan:</span>
-        <span className="font-bold text-slate-800">
-          {pkg.bookingDeadline
-            ? formatDate(pkg.bookingDeadline)
-            : (pkg.departureDate ? `H-1 (${formatDate(new Date(new Date(pkg.departureDate).getTime() - 1 * 86400000))})` : "—")}
-        </span>
-      </div>
 
       {/* Travel Provider Pill */}
       <div className="pt-3 border-t border-slate-100 flex items-center gap-3">
@@ -220,15 +239,18 @@ export default async function PackageDetailPage({ params }: PageProps) {
           const now = new Date();
           let isPastDeadline = false;
 
-          if (pkg.bookingDeadline) {
-            const deadline = new Date(pkg.bookingDeadline);
-            if (deadline.getUTCHours() === 0 && deadline.getUTCMinutes() === 0) {
-              deadline.setUTCHours(23, 59, 59, 999);
+          // Deadline hanya berlaku untuk OPEN trip
+          if (pkg.tripType !== "PRIVATE") {
+            if (pkg.bookingDeadline) {
+              const deadline = new Date(pkg.bookingDeadline);
+              if (deadline.getUTCHours() === 0 && deadline.getUTCMinutes() === 0) {
+                deadline.setUTCHours(23, 59, 59, 999);
+              }
+              isPastDeadline = now.getTime() > deadline.getTime();
+            } else if (pkg.departureDate) {
+              const dep = new Date(pkg.departureDate).getTime();
+              isPastDeadline = dep - now.getTime() <= 1 * 24 * 60 * 60 * 1000;
             }
-            isPastDeadline = now.getTime() > deadline.getTime();
-          } else if (pkg.departureDate) {
-            const dep = new Date(pkg.departureDate).getTime();
-            isPastDeadline = dep - now.getTime() <= 1 * 24 * 60 * 60 * 1000;
           }
 
           const isInactive = pkg.status !== "PUBLISHED" || isPastDeadline;
@@ -244,7 +266,7 @@ export default async function PackageDetailPage({ params }: PageProps) {
             );
           }
 
-          if (pkg.quotaLeft <= 0) {
+          if (pkg.tripType !== "PRIVATE" && pkg.quotaLeft <= 0) {
             return (
               <button
                 disabled
@@ -392,6 +414,11 @@ export default async function PackageDetailPage({ params }: PageProps) {
                     <Clock className="w-3.5 h-3.5" />
                     <span>{pkg.durationDays} Hari Perjalanan</span>
                   </div>
+                  {pkg.tripType === "PRIVATE" && (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-600 text-xs font-bold shadow-sm text-white">
+                      <span>Private Trip</span>
+                    </div>
+                  )}
                   {pkg.category && (
                     <div className="inline-flex items-center px-3 py-1 rounded-full bg-slate-900/80 backdrop-blur-xs border border-white/20 text-xs font-bold text-white shadow-sm">
                       {categoryLabels[pkg.category] || pkg.category}

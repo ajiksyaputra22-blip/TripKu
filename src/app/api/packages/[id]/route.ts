@@ -334,6 +334,9 @@ export async function PUT(
           : existingPackage.checkpointRoute,
         dpPercentage: body.dpPercentage !== undefined ? (parseInt(body.dpPercentage) || 0) : existingPackage.dpPercentage,
         category: body.category ?? existingPackage.category,
+        tripType: body.tripType ?? (existingPackage as any).tripType ?? "OPEN",
+        dailyQuota: body.tripType === "PRIVATE" ? (parseInt(body.dailyQuota) || null) : null,
+        availableDays: body.availableDays ?? (existingPackage as any).availableDays ?? "ALL_DAYS",
         status: body.status ?? existingPackage.status,
       },
     });
