@@ -105,7 +105,7 @@ export default function TravelPaymentsPage() {
             Verifikasi Bukti Pembayaran Customer
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Periksa keabsahan bukti transfer (DP atau Pelunasan). Verifikasi pembayaran akan langsung mengaktifkan jadwal perjalanan. Penugasan kru opsional dan trip dapat dijalankan secara mandiri.
+            Periksa keabsahan bukti transfer (DP atau Pelunasan). Verifikasi pembayaran akan langsung mengaktifkan jadwal perjalanan.
           </p>
         </div>
 
@@ -237,8 +237,8 @@ export default function TravelPaymentsPage() {
                               setVerificationNote(latestPayment?.verificationNote || "");
                             }}
                             className={`px-3 py-1.5 rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer ${isWaitingVerification
-                                ? "bg-amber-500 hover:bg-amber-600 text-white animate-pulse"
-                                : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                              ? "bg-amber-500 hover:bg-amber-600 text-white animate-pulse"
+                              : "bg-slate-100 hover:bg-slate-200 text-slate-700"
                               }`}
                           >
                             {isWaitingVerification ? "Verifikasi Sekarang" : "Tinjau Bukti"}

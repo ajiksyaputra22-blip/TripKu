@@ -68,6 +68,10 @@ export default function TravelPackagesPage() {
 
   // Helper: is booking closed for a package?
   const isBookingClosed = (pkg: any) => {
+    // Private Trip tidak pernah ditutup oleh batas waktu / kuota menyeluruh, hanya oleh status non-aktif
+    if (pkg.tripType === "PRIVATE") {
+      return pkg.status !== "PUBLISHED";
+    }
     const now = Date.now();
     if (pkg.status !== "PUBLISHED" && pkg.status !== "INACTIVE") return true;
     if (pkg.bookingDeadline) {
@@ -87,13 +91,13 @@ export default function TravelPackagesPage() {
   const hasActiveBookings = (pkg: any) => {
     if (!pkg.bookings || !Array.isArray(pkg.bookings)) return false;
     return pkg.bookings.some((b: any) =>
-      ["CONFIRMED", "PAID", "DP_PAID", "WAITING_PAYMENT", "WAITING_DP_PAYMENT"].includes(b.status)
+      ["CONFIRMED", "PAID", "DP_PAID", "WAITING_PAYMENT", "WAITING_DP_PAYMENT", "WAITING_VERIFICATION", "NEEDS_PELUNASAN"].includes(b.status)
     );
   };
 
   // Status badge for package: AKTIF -> NONAKTIF / PEMESANAN DITUTUP -> SELESAI
   const pkgStatusBadge = (pkg: any) => {
-    const isCompleted = pkg.status === "COMPLETED" || (pkg.quotaLeft !== undefined && pkg.quotaLeft !== null && pkg.quotaLeft <= 0);
+    const isCompleted = pkg.status === "COMPLETED" || (pkg.tripType !== "PRIVATE" && pkg.quotaLeft !== undefined && pkg.quotaLeft !== null && pkg.quotaLeft <= 0);
     if (isCompleted) return { label: "SELESAI", cls: "bg-slate-100 text-slate-600 border-slate-300" };
     const closed = isBookingClosed(pkg);
     if (pkg.status === "INACTIVE" || closed) return { label: "PEMESANAN DITUTUP", cls: "bg-rose-50 text-rose-600 border-rose-200" };
@@ -105,7 +109,7 @@ export default function TravelPackagesPage() {
   const sortedPackages = useMemo(() => {
     return [...packages].sort((a: any, b: any) => {
       const getRank = (pkg: any) => {
-        const isCompleted = pkg.status === "COMPLETED" || (pkg.quotaLeft !== undefined && pkg.quotaLeft !== null && pkg.quotaLeft <= 0);
+        const isCompleted = pkg.status === "COMPLETED" || (pkg.tripType !== "PRIVATE" && pkg.quotaLeft !== undefined && pkg.quotaLeft !== null && pkg.quotaLeft <= 0);
         if (isCompleted) return 3; // SELESAI (paling bawah)
         if (pkg.status === "INACTIVE" || isBookingClosed(pkg)) return 2; // INACTIVE / DITUTUP (tengah)
         return 1; // ACTIVE / PUBLISHED (paling atas)
@@ -189,7 +193,8 @@ export default function TravelPackagesPage() {
   };
 
   const openEditModal = (pkg: any) => {
-    if (hasActiveBookings(pkg)) {
+    // Private Trip: boleh diedit walau ada pesanan aktif (hanya status yang dikunci di form)
+    if (hasActiveBookings(pkg) && pkg.tripType !== "PRIVATE") {
       toast.warning("Paket ini tidak bisa diedit karena masih ada pesanan yang berlangsung.");
       return;
     }
@@ -648,14 +653,19 @@ export default function TravelPackagesPage() {
                               <AlertTriangle className="w-3 h-3 inline -mt-px" /> Pesanan Aktif
                             </span>
                           )}
-                          <button
-                            onClick={() => openEditModal(pkg)}
-                            className={`p-2 rounded-xl transition-colors ${hasActiveBookings(pkg) ? "text-slate-300 cursor-not-allowed" : "text-slate-500 hover:text-emerald-700 hover:bg-slate-100"}`}
-                            title={hasActiveBookings(pkg) ? "Tidak bisa diedit, ada pesanan aktif" : "Edit Paket"}
-                            disabled={hasActiveBookings(pkg)}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
+                          {(() => {
+                            const cannotEdit = hasActiveBookings(pkg) && pkg.tripType !== "PRIVATE";
+                            return (
+                              <button
+                                onClick={() => openEditModal(pkg)}
+                                className={`p-2 rounded-xl transition-colors ${cannotEdit ? "text-slate-300 cursor-not-allowed" : "text-slate-500 hover:text-emerald-700 hover:bg-slate-100"}`}
+                                title={cannotEdit ? "Tidak bisa diedit, ada pesanan aktif" : "Edit Paket"}
+                                disabled={cannotEdit}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                            );
+                          })()}
                           <button
                             onClick={() => handleArchive(pkg.id, pkg.name)}
                             className={`p-2 rounded-xl transition-colors ${hasActiveBookings(pkg) ? "text-slate-300 cursor-not-allowed" : "text-slate-500 hover:text-amber-700 hover:bg-amber-50"}`}
@@ -739,9 +749,7 @@ export default function TravelPackagesPage() {
                             {pkg.tripType === "PRIVATE" ? (
                               <div className="space-y-0.5">
                                 <div className="font-bold text-indigo-700 text-[11px]">Private Trip</div>
-                                <div className="text-[10px] text-slate-500">
-                                  {pkg.availableDays === "WEEKDAY" ? "Week Day (Sen–Jum)" : pkg.availableDays === "WEEKEND" ? "Week End (Sab–Min)" : "Setiap Hari"}
-                                </div>
+                                <div className="text-[10px] text-slate-500">Tersedia Setiap Hari</div>
                                 <div className="text-[10px] text-slate-400">Kuota: {pkg.dailyQuota || pkg.capacity}/hari</div>
                               </div>
                             ) : (
@@ -775,9 +783,9 @@ export default function TravelPackagesPage() {
                             <div className="inline-flex items-center gap-1.5">
                               <button
                                 onClick={() => openEditModal(pkg)}
-                                className={`p-1.5 rounded-lg transition-colors ${hasActiveBookings(pkg) ? "text-slate-300 cursor-not-allowed" : "text-slate-600 hover:text-emerald-600 hover:bg-emerald-50"}`}
-                                title={hasActiveBookings(pkg) ? "Tidak bisa diedit, ada pesanan aktif" : "Edit Paket"}
-                                disabled={hasActiveBookings(pkg)}
+                                className={`p-1.5 rounded-lg transition-colors ${hasActiveBookings(pkg) && pkg.tripType !== "PRIVATE" ? "text-slate-300 cursor-not-allowed" : "text-slate-600 hover:text-emerald-600 hover:bg-emerald-50"}`}
+                                title={hasActiveBookings(pkg) && pkg.tripType !== "PRIVATE" ? "Tidak bisa diedit, ada pesanan aktif" : "Edit Paket"}
+                                disabled={hasActiveBookings(pkg) && pkg.tripType !== "PRIVATE"}
                               >
                                 <Edit className="w-4 h-4" />
                               </button>
@@ -1003,9 +1011,6 @@ export default function TravelPackagesPage() {
                   <label className="block font-bold text-slate-800 text-sm mb-1">
                     Metode Penentuan Harga *
                   </label>
-                  <p className="text-xs text-slate-500 mb-3">
-                    Pilih bagaimana harga paket wisata ini ditentukan untuk calon pelanggan.
-                  </p>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <label
@@ -1361,12 +1366,19 @@ export default function TravelPackagesPage() {
                   <select
                     value={pkgStatus}
                     onChange={(e) => setPkgStatus(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-amber-200 text-slate-900 focus:outline-none focus:border-amber-500 text-xs font-semibold"
+                    disabled={!!hasActiveBookings(editingPkg)}
+                    className={`w-full px-3 py-2 rounded-xl bg-white border border-amber-200 text-slate-900 focus:outline-none focus:border-amber-500 text-xs font-semibold ${hasActiveBookings(editingPkg) ? "opacity-50 cursor-not-allowed" : ""}`}
                   >
                     <option value="PUBLISHED">AKTIF</option>
                     <option value="INACTIVE">NONAKTIF</option>
                     <option value="COMPLETED">SELESAI</option>
                   </select>
+                  {hasActiveBookings(editingPkg) && (
+                    <p className="text-[11px] text-amber-700 mt-1 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3 shrink-0" />
+                      Status publikasi tidak dapat diubah selama ada pesanan aktif. Selesaikan semua trip terlebih dahulu.
+                    </p>
+                  )}
                 </div>
               )}
 

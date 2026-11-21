@@ -59,8 +59,9 @@ export async function POST(request: Request) {
         },
       });
 
-      // REQ-4.1: Kuota baru berkurang setelah pembayaran/DP dikonfirmasi
-      if (isDP || !payment.booking.dpPaid) {
+      // REQ-4.1: Kuota baru berkurang setelah pembayaran/DP dikonfirmasi (hanya untuk OPEN TRIP)
+      // Untuk PRIVATE TRIP: kuota bersifat harian (dailyQuota) dan diperiksa dinamis per tanggal
+      if ((payment.booking.package as any).tripType !== "PRIVATE" && (isDP || !payment.booking.dpPaid)) {
         await prisma.package.update({
           where: { id: payment.booking.packageId },
           data: {
@@ -78,7 +79,7 @@ export async function POST(request: Request) {
       if (!activeTrip) {
         // Untuk PRIVATE TRIP: scheduleDate diambil dari payment.booking.selectedDate
         // Untuk OPEN TRIP: scheduleDate diambil dari payment.booking.package.departureDate
-        const bookingDateSchedule = payment.booking.selectedDate || payment.booking.package.departureDate;
+        const bookingDateSchedule = (payment.booking as any).selectedDate || payment.booking.package.departureDate;
 
         activeTrip = await prisma.trip.create({
           data: {

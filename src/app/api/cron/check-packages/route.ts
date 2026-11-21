@@ -7,10 +7,11 @@ export async function GET() {
     const now = new Date();
     const cutoffDate = new Date(Date.now() + 1 * 24 * 60 * 60 * 1000);
 
-    // 1. Matikan paket dengan explicit bookingDeadline yang sudah terlewati
-    const resDeadline = await prisma.package.updateMany({
+    // 1. Matikan paket OPEN TRIP dengan explicit bookingDeadline yang sudah terlewati
+    const resDeadline = await (prisma.package as any).updateMany({
       where: {
         status: "PUBLISHED",
+        tripType: { not: "PRIVATE" },
         bookingDeadline: { lte: now },
       },
       data: {
@@ -18,10 +19,11 @@ export async function GET() {
       },
     });
 
-    // 2. Matikan paket tanpa bookingDeadline yang sudah melewati batas H-1 keberangkatan
-    const resFallback = await prisma.package.updateMany({
+    // 2. Matikan paket OPEN TRIP tanpa bookingDeadline yang sudah melewati batas H-1 keberangkatan
+    const resFallback = await (prisma.package as any).updateMany({
       where: {
         status: "PUBLISHED",
+        tripType: { not: "PRIVATE" },
         bookingDeadline: null,
         departureDate: { lte: cutoffDate },
       },

@@ -131,11 +131,19 @@ export default function CustomerBookingsPage() {
                       <h3 className="font-bold text-sm sm:text-base text-slate-900 leading-snug">
                         {b.package.name}
                       </h3>
-                      <div className="flex items-center gap-2 text-xs text-slate-500">
-                        <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                      <div className="flex items-center gap-2 text-xs text-slate-500 flex-wrap">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         <span>{b.package.destination}</span>
                         <span>•</span>
                         <span>{b.participantCount} Peserta</span>
+                        <span>•</span>
+                        <span className="font-semibold text-emerald-700">
+                          {b.selectedDate
+                            ? `Jadwal: ${new Date(b.selectedDate).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}`
+                            : b.package.departureDate
+                            ? `Jadwal: ${new Date(b.package.departureDate).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}`
+                            : "Private Trip"}
+                        </span>
                       </div>
                       <div className="text-[11px] text-slate-400">
                         Penyelenggara: <span className="font-medium text-slate-700">{b.package.travel.businessName}</span>

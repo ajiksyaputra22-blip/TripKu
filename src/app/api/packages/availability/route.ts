@@ -23,7 +23,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const pkg: any = await prisma.package.findUnique({
+    const pkg: any = await (prisma.package as any).findUnique({
       where: { id: packageId },
       select: {
         tripType: true,
@@ -62,43 +62,6 @@ export async function GET(request: Request) {
     const requestedEnd = new Date(requestedDate);
     requestedEnd.setUTCDate(requestedEnd.getUTCDate() + durationDays - 1);
 
-    // Cek apakah tanggal yang dipilih sesuai dengan kategori availableDays
-    // 0 = Minggu, 6 = Sabtu (WEEKEND), 1-5 = Senin-Jumat (WEEKDAY)
-    const allowedCategory = pkg.availableDays || "ALL_DAYS";
-    let isDayCategoryAllowed = true;
-    let dayCategoryError = "";
-
-    const checkCur = new Date(requestedDate);
-    while (checkCur <= requestedEnd) {
-      const dayOfWeek = checkCur.getUTCDay();
-      const isWeekendDay = dayOfWeek === 0 || dayOfWeek === 6;
-      if (allowedCategory === "WEEKDAY" && isWeekendDay) {
-        isDayCategoryAllowed = false;
-        dayCategoryError = "Paket ini hanya tersedia untuk hari kerja (Senin - Jumat / Week Day).";
-        break;
-      } else if (allowedCategory === "WEEKEND" && !isWeekendDay) {
-        isDayCategoryAllowed = false;
-        dayCategoryError = "Paket ini hanya tersedia untuk akhir pekan (Sabtu - Minggu / Week End).";
-        break;
-      }
-      checkCur.setUTCDate(checkCur.getUTCDate() + 1);
-    }
-
-    if (!isDayCategoryAllowed) {
-      return NextResponse.json({
-        available: false,
-        canFit: false,
-        categoryBlocked: true,
-        message: dayCategoryError,
-        dailyQuota: pkg.dailyQuota,
-        booked: 0,
-        remaining: 0,
-        requestedDate: dateStr,
-        durationDays,
-        availableDays: allowedCategory,
-      });
-    }
-
     // Ambil semua booking AKTIF untuk paket ini yang tanggalnya OVERLAP
     // Overlap terjadi jika: booking.selectedDate <= requestedEnd && bookingEnd >= requestedDate
     // bookingEnd = selectedDate + (durationDays - 1) hari
@@ -107,7 +70,7 @@ export async function GET(request: Request) {
     const earliestStart = new Date(requestedDate);
     earliestStart.setUTCDate(earliestStart.getUTCDate() - (durationDays - 1));
 
-    const overlappingBookings = await prisma.booking.findMany({
+    const overlappingBookings = await (prisma.booking as any).findMany({
       where: {
         packageId,
         selectedDate: {
@@ -205,7 +168,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const pkg: any = await prisma.package.findUnique({
+    const pkg: any = await (prisma.package as any).findUnique({
       where: { id: packageId },
       select: { tripType: true, durationDays: true, dailyQuota: true, availableDays: true },
     });
@@ -222,7 +185,7 @@ export async function POST(request: Request) {
     const earliestStart = new Date(start);
     earliestStart.setUTCDate(earliestStart.getUTCDate() - (durationDays - 1));
 
-    const bookings = await prisma.booking.findMany({
+    const bookings = await (prisma.booking as any).findMany({
       where: {
         packageId,
         selectedDate: { gte: earliestStart, lte: end },

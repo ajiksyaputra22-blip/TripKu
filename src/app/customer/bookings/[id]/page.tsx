@@ -303,7 +303,7 @@ export default function CustomerBookingDetailPage() {
             <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs">
               <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
                 <Users className="w-4 h-4 text-emerald-600" />
-                <span>Manifest Data Peserta ({booking.participants.length} Orang)</span>
+                <span>Data Peserta ({booking.participants.length} Orang)</span>
               </h3>
 
               <div className="divide-y divide-slate-100">
@@ -340,6 +340,16 @@ export default function CustomerBookingDetailPage() {
                   <div className="font-bold text-sm text-slate-900">{booking.package.name}</div>
                   <div>Destinasi: <span className="font-medium text-slate-800">{booking.package.destination}</span></div>
                   <div>Penyelenggara: <span className="font-medium text-slate-800">{booking.package.travel.businessName}</span></div>
+                  <div>
+                    Jadwal Keberangkatan:{" "}
+                    <span className="font-semibold text-emerald-700">
+                      {booking.selectedDate
+                        ? formatDate(booking.selectedDate)
+                        : booking.package.departureDate
+                        ? formatDate(booking.package.departureDate)
+                        : "-"}
+                    </span>
+                  </div>
                   <div>Durasi: <span className="font-medium text-slate-800">{booking.package.durationDays} Hari</span></div>
                   <div>Transportasi: <span className="font-medium text-slate-800">{booking.package.vehicle}</span></div>
                 </div>
@@ -359,14 +369,14 @@ export default function CustomerBookingDetailPage() {
                       return (
                         <div key={idx} className="relative flex items-start gap-3 mb-3">
                           <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 z-10 text-[10px] font-bold border-2 ${isCurrent ? "bg-emerald-600 border-emerald-600 text-white" :
-                              isReached ? "bg-emerald-100 border-emerald-400 text-emerald-700" :
-                                "bg-white border-slate-300 text-slate-400"
+                            isReached ? "bg-emerald-100 border-emerald-400 text-emerald-700" :
+                              "bg-white border-slate-300 text-slate-400"
                             }`}>
                             {idx + 1}
                           </div>
                           <span className={`text-xs pt-0.5 ${isCurrent ? "font-bold text-emerald-700" :
-                              isReached ? "font-medium text-slate-700" :
-                                "text-slate-500"
+                            isReached ? "font-medium text-slate-700" :
+                              "text-slate-500"
                             }`}>
                             {point}
                             {isCurrent && <span className="ml-1.5 text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-bold">📍 Di sini</span>}
@@ -387,9 +397,9 @@ export default function CustomerBookingDetailPage() {
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
                 Informasi Pembayaran
               </h3>
-              <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${hasDP ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"
+              <span className={`text-[8px] font-extrabold px-2.5 py-0.5 rounded-full border ${hasDP ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"
                 }`}>
-                {hasDP ? `Skema DP (${Math.round(dpAmount / booking.totalPrice * 100)}%)` : "Skema Bayar Penuh"}
+                {hasDP ? `Skema DP (${Math.round(dpAmount / booking.totalPrice * 100)}%)` : "Bayar Penuh"}
               </span>
             </div>
 
@@ -397,11 +407,10 @@ export default function CustomerBookingDetailPage() {
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 mb-4 text-xs space-y-2">
               <div className="flex justify-between items-center mb-2">
                 <h4 className="font-bold text-slate-900 text-xs">Rincian Pembayaran</h4>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                  booking.pricingType === "CUSTOM"
-                    ? "bg-amber-100 text-amber-800 border border-amber-200"
-                    : "bg-slate-100 text-slate-700"
-                }`}>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${booking.pricingType === "CUSTOM"
+                  ? "bg-amber-100 text-amber-800 border border-amber-200"
+                  : "bg-slate-100 text-slate-700"
+                  }`}>
                   {booking.pricingType === "CUSTOM" ? "Harga Custom" : "Harga Tetap"}
                 </span>
               </div>

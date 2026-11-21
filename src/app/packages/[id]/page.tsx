@@ -164,16 +164,9 @@ export default async function PackageDetailPage({ params }: PageProps) {
           </div>
 
           <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
-            <span className="text-slate-500 font-medium">Kategori Hari:</span>
-            <span className="font-bold text-slate-800">
-              {pkg.availableDays === "WEEKDAY" ? "Week Day (Senin–Jumat)" : pkg.availableDays === "WEEKEND" ? "Week End (Sabtu–Minggu)" : "Setiap Hari (Bebas)"}
-            </span>
-          </div>
-
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-xs">
-            <span className="text-slate-500 font-medium block mb-1">Tanggal Keberangkatan:</span>
-            <span className="font-bold text-emerald-700 block">
-              Bebas pilih tanggal sendiri saat memesan
+            <span className="text-slate-500 font-medium">Jadwal Keberangkatan:</span>
+            <span className="font-bold text-emerald-700">
+              Tersedia Setiap Hari (Pilih Tanggal Bebas)
             </span>
           </div>
         </>
@@ -472,9 +465,6 @@ export default async function PackageDetailPage({ params }: PageProps) {
                       <CreditCard className="w-5 h-5 text-amber-600" />
                       <span>Variasi Harga Berdasarkan Jumlah Peserta</span>
                     </h2>
-                    <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                      Harga per orang akan dihitung otomatis sesuai jumlah rombongan yang Anda daftarkan saat pemesanan.
-                    </p>
                   </div>
                   <span className="self-start sm:self-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
                     Harga Custom

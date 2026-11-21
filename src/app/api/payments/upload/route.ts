@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { uploadToStorage } from "@/lib/supabase-storage";
+import { createNotification } from "@/lib/notifications";
 import path from "path";
 
 const MAX_FILE_SIZE = 3 * 1024 * 1024; // 3 MB
@@ -134,6 +135,26 @@ export async function POST(request: Request) {
       where: { id: bookingId },
       data: updateData,
     });
+
+    // Kirim notifikasi ke pihak travel ketika customer upload bukti pembayaran
+    const bookingWithPkg = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        package: {
+          include: { travel: { select: { userId: true } } },
+        },
+      },
+    });
+    if (bookingWithPkg?.package?.travel?.userId) {
+      const paymentLabel = isDP ? "Uang Muka (DP)" : isPelunasan ? "Pelunasan" : "Pembayaran";
+      await createNotification({
+        userId: bookingWithPkg.package.travel.userId,
+        type: "PAYMENT",
+        title: `Bukti ${paymentLabel} Diterima`,
+        message: `Pelanggan telah mengupload bukti ${paymentLabel.toLowerCase()} untuk paket "${bookingWithPkg.package.name}". Silakan tinjau dan verifikasi pembayaran.`,
+        link: "/travel/payments",
+      });
+    }
 
     return NextResponse.json({ success: true, payment, paymentType });
   } catch (error) {

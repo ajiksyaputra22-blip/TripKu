@@ -427,7 +427,7 @@ export async function POST(request: Request) {
       ? facilities
       : JSON.stringify(["Transportasi", "Tiket Wisata"]);
 
-    const newPackage = await prisma.package.create({
+    const newPackage = await (prisma.package as any).create({
       data: {
         travelId: targetTravelId,
         name,

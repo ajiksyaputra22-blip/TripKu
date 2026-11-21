@@ -204,26 +204,6 @@ export async function POST(request: Request) {
       const reqEnd = new Date(reqDate);
       reqEnd.setUTCDate(reqEnd.getUTCDate() + durationDays - 1);
 
-      // Cek kategori hari: ALL_DAYS | WEEKDAY | WEEKEND
-      const allowedCategory = pkg.availableDays || "ALL_DAYS";
-      const checkCur = new Date(reqDate);
-      while (checkCur <= reqEnd) {
-        const dayOfWeek = checkCur.getUTCDay();
-        const isWeekendDay = dayOfWeek === 0 || dayOfWeek === 6;
-        if (allowedCategory === "WEEKDAY" && isWeekendDay) {
-          return NextResponse.json(
-            { error: "Paket ini hanya dapat dipesan untuk hari kerja (Senin - Jumat / Week Day). Tanggal yang Anda pilih mencakup akhir pekan." },
-            { status: 400 }
-          );
-        } else if (allowedCategory === "WEEKEND" && !isWeekendDay) {
-          return NextResponse.json(
-            { error: "Paket ini hanya dapat dipesan untuk akhir pekan (Sabtu - Minggu / Week End). Tanggal yang Anda pilih mencakup hari kerja." },
-            { status: 400 }
-          );
-        }
-        checkCur.setUTCDate(checkCur.getUTCDate() + 1);
-      }
-
       // Hitung occupancy pada hari-hari yang overlap
       const dailyQuota = pkg.dailyQuota || pkg.capacity || 10;
       const earliestStart = new Date(reqDate);
@@ -367,6 +347,21 @@ export async function POST(request: Request) {
       message: `Pemesanan Anda untuk paket "${pkg.name}" (Kode: ${bookingCode}) telah berhasil dibuat. Silakan lakukan pembayaran.`,
       link: "/customer/bookings",
     });
+
+    // Kirim notifikasi ke pihak travel (owner)
+    const travelOwner = await prisma.travel.findUnique({
+      where: { id: pkg.travelId },
+      select: { userId: true },
+    });
+    if (travelOwner?.userId) {
+      await createNotification({
+        userId: travelOwner.userId,
+        type: "BOOKING",
+        title: "Pesanan Baru Masuk!",
+        message: `Ada pelanggan baru yang memesan paket "${pkg.name}" (Kode: ${bookingCode}) untuk ${count} orang. Segera tunggu dan tinjau bukti pembayaran.`,
+        link: "/travel/payments",
+      });
+    }
 
     return NextResponse.json({ success: true, booking: newBooking });
   } catch (error) {

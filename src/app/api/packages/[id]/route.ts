@@ -213,13 +213,27 @@ export async function PUT(
     const activeBookingsCount = await prisma.booking.count({
       where: {
         packageId: id,
-        status: { in: ["CONFIRMED", "PAID", "DP_PAID", "WAITING_PAYMENT", "WAITING_DP_PAYMENT"] },
+        status: { in: ["CONFIRMED", "PAID", "DP_PAID", "WAITING_PAYMENT", "WAITING_DP_PAYMENT", "WAITING_VERIFICATION", "NEEDS_PELUNASAN"] },
       },
     });
-    if (activeBookingsCount > 0) {
+
+    const isPrivate = (existingPackage as any).tripType === "PRIVATE";
+
+    // REVISI: Untuk OPEN TRIP, tidak bisa edit jika ada pesanan aktif.
+    // Untuk PRIVATE TRIP: Paket TETAP BISA DIEDIT meskipun sudah ada pesanan aktif/pembayaran,
+    // DENGAN SYARAT: Status publikasi paket TIDAK BISA DIUBAH (harus tetap status saat ini sampai trip selesai).
+    if (activeBookingsCount > 0 && !isPrivate) {
       return NextResponse.json(
-        { error: "Paket tidak bisa diedit karena masih ada pesanan yang berlangsung." },
+        { error: "Paket Open Trip tidak bisa diedit karena masih ada pesanan yang berlangsung." },
         { status: 409 }
+      );
+    }
+
+    // Jika Private Trip memiliki pesanan aktif dan user mencoba mengubah status publikasi paket:
+    if (activeBookingsCount > 0 && isPrivate && body.status && body.status !== existingPackage.status) {
+      return NextResponse.json(
+        { error: "Status Publikasi Paket Private Trip tidak dapat diubah selama masih ada pesanan yang berlangsung. Selesaikan trip terlebih dahulu untuk mengubah status publikasi." },
+        { status: 400 }
       );
     }
 
@@ -307,7 +321,7 @@ export async function PUT(
       quotaLeftToSet = Math.max(0, (existingPackage.quotaLeft ?? existingPackage.capacity) + diff);
     }
 
-    const updated = await prisma.package.update({
+    const updated = await (prisma.package as any).update({
       where: { id },
       data: {
         name: body.name ?? existingPackage.name,
@@ -447,7 +461,7 @@ export async function PATCH(
       quotaLeftUpdate = existingPackage.capacity;
     }
 
-    const updated = await prisma.package.update({
+    const updated = await (prisma.package as any).update({
       where: { id },
       data: {
         ...(body.status !== undefined && { status: body.status }),
