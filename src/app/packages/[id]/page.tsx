@@ -144,11 +144,6 @@ export default async function PackageDetailPage({ params }: PageProps) {
           </span>
           <span className="text-xs text-slate-400 ml-1">/ peserta</span>
         </div>
-        {pkg.pricingType === "CUSTOM" && (
-          <span className="block text-[11px] text-amber-700 font-medium mt-1">
-            *Menyesuaikan jumlah peserta rombongan
-          </span>
-        )}
       </div>
 
       {/* Status Kuota & Jadwal */}

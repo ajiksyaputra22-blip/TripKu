@@ -359,7 +359,7 @@ export default function TravelPackagesPage() {
           dailyQuota: tripType === "PRIVATE" ? parseInt(dailyQuota) : null,
           availableDays: tripType === "PRIVATE" ? availableDays : "ALL_DAYS",
           durationDays: parseInt(durationDays),
-          capacity: parseInt(capacity),
+          capacity: tripType === "PRIVATE" ? (parseInt(dailyQuota) || parseInt(capacity)) : parseInt(capacity),
           vehicle,
           accommodation,
           facilities: facList,
@@ -602,14 +602,8 @@ export default function TravelPackagesPage() {
                               <span className="font-bold text-indigo-700">Private Trip</span>
                             </div>
                             <div className="flex items-center justify-between">
-                              <span className="text-slate-500">Kuota / Hari:</span>
+                              <span className="text-slate-500">Kuota:</span>
                               <span className="font-bold text-slate-800">{pkg.dailyQuota || pkg.capacity} Pax</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-slate-500">Kategori Hari:</span>
-                              <span className="font-semibold text-slate-700">
-                                {pkg.availableDays === "WEEKDAY" ? "Week Day (Sen–Jum)" : pkg.availableDays === "WEEKEND" ? "Week End (Sab–Min)" : "Setiap Hari"}
-                              </span>
                             </div>
                           </>
                         ) : (
@@ -951,7 +945,7 @@ export default function TravelPackagesPage() {
                   <div className="pt-2 border-t border-indigo-100 space-y-3">
                     <div>
                       <label className="block font-bold text-slate-700 text-xs mb-1">
-                        Kuota Maksimal Peserta per Hari *
+                        Kuota per Hari (Maksimal Peserta) *
                       </label>
                       <input
                         type="number"
@@ -959,74 +953,19 @@ export default function TravelPackagesPage() {
                         min="1"
                         placeholder="Contoh: 6"
                         value={dailyQuota}
-                        onChange={(e) => setDailyQuota(e.target.value)}
+                        onChange={(e) => {
+                          setDailyQuota(e.target.value);
+                          setCapacity(e.target.value);
+                        }}
                         className="w-full px-3 py-2 rounded-xl bg-white border border-indigo-200 text-slate-900 focus:outline-none focus:border-indigo-500 font-semibold"
                       />
-                    </div>
-
-                    <div>
-                      <label className="block font-bold text-slate-700 text-xs mb-1.5">
-                        Kategori Hari Keberangkatan yang Dibuka *
-                      </label>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <label
-                          className={`flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer text-xs transition-all ${availableDays === "WEEKDAY"
-                            ? "border-indigo-500 bg-white ring-1 ring-indigo-500 font-bold text-indigo-900"
-                            : "border-slate-200 bg-white/70 text-slate-700 hover:bg-white"
-                            }`}
-                        >
-                          <input
-                            type="radio"
-                            name="availableDays"
-                            value="WEEKDAY"
-                            checked={availableDays === "WEEKDAY"}
-                            onChange={() => setAvailableDays("WEEKDAY")}
-                            className="text-indigo-600 focus:ring-indigo-500"
-                          />
-                          <span>Week Day (Sen–Jum)</span>
-                        </label>
-
-                        <label
-                          className={`flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer text-xs transition-all ${availableDays === "WEEKEND"
-                            ? "border-indigo-500 bg-white ring-1 ring-indigo-500 font-bold text-indigo-900"
-                            : "border-slate-200 bg-white/70 text-slate-700 hover:bg-white"
-                            }`}
-                        >
-                          <input
-                            type="radio"
-                            name="availableDays"
-                            value="WEEKEND"
-                            checked={availableDays === "WEEKEND"}
-                            onChange={() => setAvailableDays("WEEKEND")}
-                            className="text-indigo-600 focus:ring-indigo-500"
-                          />
-                          <span>Week End (Sab–Min)</span>
-                        </label>
-
-                        <label
-                          className={`flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer text-xs transition-all ${availableDays === "ALL_DAYS"
-                            ? "border-indigo-500 bg-white ring-1 ring-indigo-500 font-bold text-indigo-900"
-                            : "border-slate-200 bg-white/70 text-slate-700 hover:bg-white"
-                            }`}
-                        >
-                          <input
-                            type="radio"
-                            name="availableDays"
-                            value="ALL_DAYS"
-                            checked={availableDays === "ALL_DAYS"}
-                            onChange={() => setAvailableDays("ALL_DAYS")}
-                            className="text-indigo-600 focus:ring-indigo-500"
-                          />
-                          <span>Setiap Hari</span>
-                        </label>
-                      </div>
                     </div>
                   </div>
                 )}
               </div>
 
               {/* ─── Jadwal & Batas Waktu (hanya untuk OPEN trip) ─── */}
-              {tripType === "OPEN" ? (
+              {tripType === "OPEN" && (
                 <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4 space-y-3">
                   <p className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5" /> Jadwal & Batas Waktu Pemesanan
@@ -1054,16 +993,6 @@ export default function TravelPackagesPage() {
                         className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500"
                       />
                     </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-indigo-100 bg-indigo-50/30 p-3.5 flex items-start gap-2.5">
-                  <Calendar className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-xs font-bold text-indigo-800">Tanggal Fleksibel</p>
-                    <p className="text-[11px] text-indigo-600 mt-0.5">
-                      Customer bebas memilih tanggal mulai sendiri saat memesan. Kuota per hari akan diperiksa secara otomatis.
-                    </p>
                   </div>
                 </div>
               )}
@@ -1113,7 +1042,7 @@ export default function TravelPackagesPage() {
                         className="mt-0.5 text-emerald-600 focus:ring-emerald-500"
                       />
                       <div>
-                        <div className="font-bold text-slate-900 text-xs sm:text-sm">Harga Custom (Bertingkat)</div>
+                        <div className="font-bold text-slate-900 text-xs sm:text-sm">Harga Custom</div>
                       </div>
                     </label>
                   </div>
@@ -1255,7 +1184,7 @@ export default function TravelPackagesPage() {
               </div>
 
               {/* ─── Durasi & Kapasitas ─── */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className={`grid grid-cols-1 ${tripType === "OPEN" ? "sm:grid-cols-2" : ""} gap-3`}>
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Durasi (Hari) *</label>
                   <input
@@ -1268,18 +1197,20 @@ export default function TravelPackagesPage() {
                     className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500"
                   />
                 </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Kapasitas Maksimal (Pax) *</label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    placeholder="Contoh: 20"
-                    value={capacity}
-                    onChange={(e) => setCapacity(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
+                {tripType === "OPEN" && (
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Kapasitas Maksimal (Pax) *</label>
+                    <input
+                      type="number"
+                      required={tripType === "OPEN"}
+                      min="1"
+                      placeholder="Contoh: 20"
+                      value={capacity}
+                      onChange={(e) => setCapacity(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1360,14 +1291,15 @@ export default function TravelPackagesPage() {
                           fd.append("folder", "packages");
                           const res = await fetch("/api/upload", { method: "POST", body: fd });
                           const data = await res.json();
-                          if (res.ok) {
+                          if (res.ok && data.url) {
                             setCoverImage(data.url);
                             toast.success("Foto sampul berhasil diunggah!");
                           } else {
-                            toast.error(data.error || "Gagal upload foto.");
+                            toast.error(data.error || "Gagal mengupload foto sampul.");
                           }
-                        } catch {
-                          toast.error("Gagal mengupload foto sampul.");
+                        } catch (err: any) {
+                          console.error("Upload error detail:", err);
+                          toast.error(err?.message || "Gagal mengupload foto sampul.");
                         } finally { setCoverImageUploading(false); }
                       }}
                     />
