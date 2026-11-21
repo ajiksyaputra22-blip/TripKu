@@ -105,7 +105,7 @@ export default function TravelPaymentsPage() {
             Verifikasi Bukti Pembayaran Customer
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Periksa keabsahan bukti transfer (DP atau Pelunasan). Verifikasi DP akan langsung mengaktifkan jadwal perjalanan dan membuka penugasan kru.
+            Periksa keabsahan bukti transfer (DP atau Pelunasan). Verifikasi pembayaran akan langsung mengaktifkan jadwal perjalanan. Penugasan kru opsional dan trip dapat dijalankan secara mandiri.
           </p>
         </div>
 
@@ -445,7 +445,7 @@ export default function TravelPaymentsPage() {
 
                 {selectedPayment.paymentType === "DP" && (
                   <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-800 leading-snug">
-                    ✨ <strong>Catatan Sistem:</strong> Menyetujui DP akan menandai DP lunas dan <strong>otomatis mengaktifkan Trip &amp; Trip Room</strong> serta membuka jendela penugasan kru Driver &amp; Guide.
+                    ✨ <strong>Catatan Sistem:</strong> Menyetujui DP akan menandai DP lunas dan <strong>otomatis mengaktifkan Trip &amp; Trip Room</strong>. Penugasan kru Driver &amp; Guide bersifat opsional, atau perjalanan dapat langsung dijalankan mandiri pada tanggal keberangkatan.
                   </div>
                 )}
 

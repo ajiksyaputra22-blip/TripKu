@@ -234,7 +234,7 @@ export default function UnifiedAssignCrewModal({
                   ? "Pencarian Kru Pengganti: Tour Guide"
                   : needDriverOnly
                     ? "Pencarian Kru Pengganti: Driver Wisata"
-                    : "Penugasan Kru Perjalanan"}
+                    : "Penugasan Kru Perjalanan (Opsional)"}
               </span>
             </div>
             <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">
@@ -290,10 +290,10 @@ export default function UnifiedAssignCrewModal({
         )}
 
         {guideRejected && driverRejected && (
-          <div className="mb-5 p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+          <div className="mb-5 p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
             <span>
-              <strong>Kedua calon kru sebelumnya menolak penawaran.</strong> Anda wajib mengulang pencarian Tour Guide dan Driver pengganti.
+              <strong>Kedua calon kru sebelumnya menolak penawaran.</strong> Anda dapat memilih calon kru baru jika diperlukan, atau menjalankan perjalanan secara mandiri tanpa kru (opsional).
             </span>
           </div>
         )}

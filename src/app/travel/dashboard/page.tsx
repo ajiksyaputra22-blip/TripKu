@@ -23,11 +23,14 @@ import {
   MessageCircle,
   UserCheck,
   CalendarDays,
+  Play
 } from "lucide-react";
 import UnifiedAssignCrewModal from "@/components/UnifiedAssignCrewModal";
 import TravelPackageDetailPage from "./detail";
+import { useToast } from "@/components/Toast";
 
 function TravelDashboardContent() {
+  const { toast } = useToast();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -50,6 +53,32 @@ function TravelDashboardContent() {
   // Crew Assignment Modal state
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [selectedTripForAssign, setSelectedTripForAssign] = useState<any>(null);
+
+  // Start trip state
+  const [startingTripId, setStartingTripId] = useState<string | null>(null);
+
+  const handleStartTrip = async (tripId: string) => {
+    if (!confirm("Mulai perjalanan untuk rombongan ini sekarang? Status trip akan berubah menjadi Berjalan (ONGOING).")) return;
+    setStartingTripId(tripId);
+    try {
+      const res = await fetch(`/api/trips/${tripId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "ONGOING" }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || "Perjalanan resmi dimulai! 🚀");
+        fetchAnalytics();
+      } else {
+        toast.error(data.error || "Gagal memulai perjalanan.");
+      }
+    } catch {
+      toast.error("Terjadi kesalahan sistem saat memulai perjalanan.");
+    } finally {
+      setStartingTripId(null);
+    }
+  };
 
   const fetchAnalytics = async () => {
     setLoading(true);
@@ -573,7 +602,7 @@ function TravelDashboardContent() {
                                               Menunggu Konfirmasi Kru
                                             </span>
                                           ) : (
-                                            <span className="font-semibold text-slate-500">Belum Ditugaskan</span>
+                                            <span className="font-semibold text-slate-500">Belum Ditugaskan (Opsional)</span>
                                           )}
                                         </div>
                                         {guide && (
@@ -607,7 +636,7 @@ function TravelDashboardContent() {
                                               Menunggu Konfirmasi Kru
                                             </span>
                                           ) : (
-                                            <span className="font-semibold text-slate-500">Belum Ditugaskan</span>
+                                            <span className="font-semibold text-slate-500">Belum Ditugaskan (Opsional)</span>
                                           )}
                                         </div>
                                         {driver && (
@@ -626,72 +655,90 @@ function TravelDashboardContent() {
                                     </div>
 
                                     {/* Operational Action Buttons */}
-                                    <div className="grid grid-cols-2 gap-2 pt-2">
-                                      {primaryTrip ? (
-                                        <>
-                                          <Link
-                                            href={`/customer/trip-room/${primaryTrip.id}`}
-                                            className="py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs"
-                                          >
-                                            <MessageCircle className="w-3.5 h-3.5" />
-                                            <span>Trip Room</span>
-                                          </Link>
-
-                                          {/* Smart Tugaskan Kru Button */}
-                                          {(() => {
-                                            const allAccepted = guideAccepted && driverAccepted;
-                                            const bothRejected = guide?.status === "REJECTED" && driver?.status === "REJECTED";
-                                            const anyRejected = guide?.status === "REJECTED" || driver?.status === "REJECTED";
-
-                                            let buttonLabel = "Tugaskan Kru";
-                                            let buttonTitle = "Tugaskan kru untuk perjalanan ini";
-
-                                            if (allAccepted) {
-                                              buttonLabel = "Penugasan Selesai";
-                                              buttonTitle = "Semua kru telah menerima penugasan perjalanan";
-                                            } else if (bothRejected) {
-                                              buttonLabel = "Ulangi Cari Kru";
-                                              buttonTitle = "Kedua calon kru menolak penawaran, wajib mengulang mencari kru kembali";
-                                            } else if (guide?.status === "REJECTED") {
-                                              buttonLabel = "Cari Tour Guide";
-                                              buttonTitle = "Tour Guide menolak penawaran, cari 1 Tour Guide pengganti";
-                                            } else if (driver?.status === "REJECTED") {
-                                              buttonLabel = "Cari Driver";
-                                              buttonTitle = "Driver menolak penawaran, cari 1 Driver pengganti";
-                                            }
-
-                                            return (
-                                              <button
-                                                onClick={() => !allAccepted && handleOpenAssignModal(primaryTrip)}
-                                                disabled={allAccepted}
-                                                title={buttonTitle}
-                                                className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs ${allAccepted
-                                                  ? "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300/60"
-                                                  : anyRejected
-                                                    ? "bg-rose-600 hover:bg-rose-700 text-white cursor-pointer"
-                                                    : "bg-slate-800 hover:bg-slate-900 text-white cursor-pointer"
-                                                  }`}
-                                              >
-                                                {allAccepted ? (
-                                                  <><CheckCircle2 className="w-3.5 h-3.5" /><span>{buttonLabel}</span></>
-                                                ) : anyRejected ? (
-                                                  <><UserCheck className="w-3.5 h-3.5" /><span>{buttonLabel}</span></>
-                                                ) : (
-                                                  <><UserCheck className="w-3.5 h-3.5 text-emerald-400" /><span>{buttonLabel}</span></>
-                                                )}
-                                              </button>
-                                            );
-                                          })()}
-                                        </>
-                                      ) : (
-                                        <Link
-                                          href="/travel/trips"
-                                          className="col-span-2 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all text-center"
+                                    <div className="space-y-2 pt-2">
+                                      {primaryTrip?.status === "SCHEDULED" && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleStartTrip(primaryTrip.id)}
+                                          disabled={startingTripId === primaryTrip.id}
+                                          className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer disabled:opacity-60"
                                         >
-                                          <Compass className="w-3.5 h-3.5" />
-                                          <span>Buka Manajemen Trip & Kru</span>
-                                        </Link>
+                                          {startingTripId === primaryTrip.id ? (
+                                            <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
+                                          ) : (
+                                            <Play className="w-3.5 h-3.5 fill-current" />
+                                          )}
+                                          <span>Mulai Perjalanan Sekarang</span>
+                                        </button>
                                       )}
+
+                                      <div className="grid grid-cols-2 gap-2">
+                                        {primaryTrip ? (
+                                          <>
+                                            <Link
+                                              href={`/customer/trip-room/${primaryTrip.id}`}
+                                              className="py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs"
+                                            >
+                                              <MessageCircle className="w-3.5 h-3.5" />
+                                              <span>Trip Room</span>
+                                            </Link>
+
+                                            {/* Smart Tugaskan Kru Button */}
+                                            {(() => {
+                                              const allAccepted = guideAccepted && driverAccepted;
+                                              const bothRejected = guide?.status === "REJECTED" && driver?.status === "REJECTED";
+                                              const anyRejected = guide?.status === "REJECTED" || driver?.status === "REJECTED";
+
+                                              let buttonLabel = "Tugaskan Kru (Opsional)";
+                                              let buttonTitle = "Tugaskan kru untuk perjalanan ini (opsional)";
+
+                                              if (allAccepted) {
+                                                buttonLabel = "Penugasan Selesai";
+                                                buttonTitle = "Semua kru telah menerima penugasan perjalanan";
+                                              } else if (bothRejected) {
+                                                buttonLabel = "Pilih Calon Kru";
+                                                buttonTitle = "Kedua calon kru menolak penawaran, Anda dapat memilih kru pengganti atau menjalankan trip mandiri";
+                                              } else if (guide?.status === "REJECTED") {
+                                                buttonLabel = "Cari Guide";
+                                                buttonTitle = "Tour Guide menolak penawaran, cari 1 Tour Guide pengganti";
+                                              } else if (driver?.status === "REJECTED") {
+                                                buttonLabel = "Cari Driver";
+                                                buttonTitle = "Driver menolak penawaran, cari 1 Driver pengganti";
+                                              }
+
+                                              return (
+                                                <button
+                                                  onClick={() => !allAccepted && handleOpenAssignModal(primaryTrip)}
+                                                  disabled={allAccepted}
+                                                  title={buttonTitle}
+                                                  className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs ${allAccepted
+                                                    ? "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300/60"
+                                                    : anyRejected
+                                                      ? "bg-rose-600 hover:bg-rose-700 text-white cursor-pointer"
+                                                      : "bg-slate-800 hover:bg-slate-900 text-white cursor-pointer"
+                                                    }`}
+                                                >
+                                                  {allAccepted ? (
+                                                    <><CheckCircle2 className="w-3.5 h-3.5" /><span>{buttonLabel}</span></>
+                                                  ) : anyRejected ? (
+                                                    <><UserCheck className="w-3.5 h-3.5" /><span>{buttonLabel}</span></>
+                                                  ) : (
+                                                    <><UserCheck className="w-3.5 h-3.5 text-emerald-400" /><span>{buttonLabel}</span></>
+                                                  )}
+                                                </button>
+                                              );
+                                            })()}
+                                          </>
+                                        ) : (
+                                          <Link
+                                            href="/travel/trips"
+                                            className="col-span-2 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all text-center"
+                                          >
+                                            <Compass className="w-3.5 h-3.5" />
+                                            <span>Buka Manajemen Trip & Kru</span>
+                                          </Link>
+                                        )}
+                                      </div>
                                     </div>
                                   </div>
 

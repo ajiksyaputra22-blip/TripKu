@@ -21,7 +21,9 @@ import {
   MessageCircle,
   Clock,
   Upload,
-  FileText
+  FileText,
+  Play,
+  CheckCircle2
 } from "lucide-react";
 
 import UnifiedAssignCrewModal from "@/components/UnifiedAssignCrewModal";
@@ -37,6 +39,17 @@ export default function TravelTripsPage() {
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
 
+  // Trip execution action states
+  const [startingTripId, setStartingTripId] = useState<string | null>(null);
+  const [completingTripId, setCompletingTripId] = useState<string | null>(null);
+
+  // Checkpoint modal state
+  const [checkpointModalOpen, setCheckpointModalOpen] = useState(false);
+  const [activeCheckpointTrip, setActiveCheckpointTrip] = useState<any>(null);
+  const [checkpointLocation, setCheckpointLocation] = useState("");
+  const [checkpointNote, setCheckpointNote] = useState("");
+  const [submittingCheckpoint, setSubmittingCheckpoint] = useState(false);
+
   const [searchQuery, setSearchQuery] = useState<string>("");
 
 
@@ -50,6 +63,89 @@ export default function TravelTripsPage() {
       setTrips([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleStartTrip = async (tripId: string) => {
+    if (!confirm("Mulai perjalanan ini sekarang? Status perjalanan akan berubah menjadi Berjalan (ONGOING).")) return;
+    setStartingTripId(tripId);
+    try {
+      const res = await fetch(`/api/trips/${tripId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "ONGOING" }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || "Perjalanan resmi dimulai! 🚀");
+        fetchTrips();
+      } else {
+        toast.error(data.error || "Gagal memulai perjalanan.");
+      }
+    } catch {
+      toast.error("Terjadi kesalahan sistem saat memulai perjalanan.");
+    } finally {
+      setStartingTripId(null);
+    }
+  };
+
+  const handleCompleteTrip = async (tripId: string) => {
+    if (!confirm("Selesaikan perjalanan ini? Seluruh rombongan akan ditandai selesai berwisata.")) return;
+    setCompletingTripId(tripId);
+    try {
+      const res = await fetch(`/api/trips/${tripId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "COMPLETED" }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || "Perjalanan telah berhasil diselesaikan! 🎉");
+        fetchTrips();
+      } else {
+        toast.error(data.error || "Gagal menyelesaikan perjalanan.");
+      }
+    } catch {
+      toast.error("Terjadi kesalahan sistem saat menyelesaikan perjalanan.");
+    } finally {
+      setCompletingTripId(null);
+    }
+  };
+
+  const openCheckpointModal = (trip: any) => {
+    setActiveCheckpointTrip(trip);
+    setCheckpointLocation("");
+    setCheckpointNote("");
+    setCheckpointModalOpen(true);
+  };
+
+  const handleSubmitCheckpoint = async () => {
+    if (!activeCheckpointTrip || !checkpointLocation.trim()) {
+      toast.warning("Nama titik lokasi wajib diisi.");
+      return;
+    }
+    setSubmittingCheckpoint(true);
+    try {
+      const res = await fetch(`/api/trips/${activeCheckpointTrip.id}/checkpoint`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          location: checkpointLocation.trim(),
+          note: checkpointNote.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success("Titik lokasi perjalanan berhasil dilaporkan!");
+        setCheckpointModalOpen(false);
+        fetchTrips();
+      } else {
+        toast.error(data.error || "Gagal melaporkan titik lokasi.");
+      }
+    } catch {
+      toast.error("Terjadi kesalahan sistem saat melaporkan lokasi.");
+    } finally {
+      setSubmittingCheckpoint(false);
     }
   };
 
@@ -327,7 +423,49 @@ export default function TravelTripsPage() {
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-2 self-start sm:self-center">
+                              <div className="flex flex-wrap items-center gap-2 self-start sm:self-center">
+                                {trip.status === "SCHEDULED" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleStartTrip(trip.id)}
+                                    disabled={startingTripId === trip.id}
+                                    className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer disabled:opacity-60"
+                                  >
+                                    {startingTripId === trip.id ? (
+                                      <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
+                                    ) : (
+                                      <Play className="w-3.5 h-3.5 fill-current" />
+                                    )}
+                                    <span>Mulai Perjalanan</span>
+                                  </button>
+                                )}
+
+                                {trip.status === "ONGOING" && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => openCheckpointModal(trip)}
+                                      className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                                    >
+                                      <Navigation className="w-3.5 h-3.5" />
+                                      <span>Lapor Titik</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCompleteTrip(trip.id)}
+                                      disabled={completingTripId === trip.id}
+                                      className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer disabled:opacity-60"
+                                    >
+                                      {completingTripId === trip.id ? (
+                                        <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
+                                      ) : (
+                                        <CheckCircle2 className="w-3.5 h-3.5" />
+                                      )}
+                                      <span>Selesaikan Trip</span>
+                                    </button>
+                                  </>
+                                )}
+
                                 <Link
                                   href={`/customer/trip-room/${trip.id}`}
                                   className="px-3.5 py-2 rounded-xl bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 text-xs font-bold flex items-center gap-1.5 transition-colors"
@@ -335,39 +473,65 @@ export default function TravelTripsPage() {
                                   <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
                                   <span>Buka Trip Room</span>
                                 </Link>
-                                <button
-                                  onClick={() => openAssignModal(trip)}
-                                  className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-emerald-600 text-white text-xs font-bold flex items-center gap-1.5 transition-colors"
-                                >
-                                  <UserPlus className="w-3.5 h-3.5" />
-                                  <span>Tugaskan Kru</span>
-                                </button>
+
+                                {trip.status !== "COMPLETED" && (
+                                  <button
+                                    onClick={() => openAssignModal(trip)}
+                                    className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-emerald-600 text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                                  >
+                                    <UserPlus className="w-3.5 h-3.5" />
+                                    <span>Tugaskan Kru (Opsional)</span>
+                                  </button>
+                                )}
                               </div>
                             </div>
 
                             {/* Live Location Monitoring Banner — REQ-6.4 */}
                             {trip.status === "SCHEDULED" ? (
-                              <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 mb-5 flex items-center gap-3">
-                                <Clock className="w-5 h-5 text-amber-600 shrink-0" />
-                                <div>
-                                  <span className="text-xs font-bold text-amber-800 block">Menunggu Keberangkatan</span>
-                                  <span className="text-[11px] text-amber-700">Monitoring posisi hanya aktif setelah perjalanan dimulai oleh Tour Guide.</span>
+                              <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-200 mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                                <div className="flex items-center gap-3">
+                                  <Clock className="w-5 h-5 text-amber-600 shrink-0" />
+                                  <div>
+                                    <span className="text-xs font-bold text-amber-900 block">
+                                      Menunggu Keberangkatan {trip.assignments && trip.assignments.length > 0 ? "• Kru Ditugaskan" : "• Perjalanan Mandiri (Kru Opsional)"}
+                                    </span>
+                                    <span className="text-[11px] text-amber-700">
+                                      {trip.assignments && trip.assignments.length > 0
+                                        ? "Perjalanan dapat dimulai oleh Kru atau langsung dimulai oleh Admin Travel pada tanggal jadwal."
+                                        : "Penugasan kru bersifat opsional. Anda dapat langsung menjalankan perjalanan tanpa Tour Guide & Driver dengan tombol 'Mulai Perjalanan'."}
+                                    </span>
+                                  </div>
                                 </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartTrip(trip.id)}
+                                  disabled={startingTripId === trip.id}
+                                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all self-start sm:self-center cursor-pointer shrink-0 disabled:opacity-60"
+                                >
+                                  {startingTripId === trip.id ? (
+                                    <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
+                                  ) : (
+                                    <Play className="w-3.5 h-3.5 fill-current" />
+                                  )}
+                                  <span>Mulai Perjalanan</span>
+                                </button>
                               </div>
                             ) : (
                               <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-200/80 mb-5 shadow-2xs">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                   <div className="flex items-center gap-3">
                                     <span className="flex h-3.5 w-3.5 relative shrink-0">
-                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                      {trip.status === "ONGOING" && (
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                      )}
                                       <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-600"></span>
                                     </span>
                                     <div>
                                       <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 block">
-                                        Monitoring Posisi Wisatawan Terkini (Live Tracking)
+                                        Monitoring Posisi Wisatawan Terkini ({trip.status === "ONGOING" ? "Live Tracking" : "Perjalanan Selesai"})
                                       </span>
                                       <span className="text-xs sm:text-sm font-extrabold text-slate-900 block">
-                                        {trip.currentLocation || "Menunggu update titik lokasi pertama dari Tour Guide"}
+                                        {trip.currentLocation || "Menunggu update titik lokasi perjalanan"}
                                       </span>
                                       {trip.checkpoints?.[0] && (
                                         <span className="text-[11px] text-emerald-700 font-semibold block mt-0.5">
@@ -377,21 +541,33 @@ export default function TravelTripsPage() {
                                     </div>
                                   </div>
 
-                                  {trip.checkpoints && trip.checkpoints.length > 0 && (
-                                    <button
-                                      type="button"
-                                      onClick={() => toggleCheckpoints(trip.id)}
-                                      className="px-3 py-1.5 rounded-xl bg-white text-emerald-800 border border-emerald-200 text-xs font-bold hover:bg-emerald-50 flex items-center gap-1.5 self-start sm:self-center shrink-0 shadow-2xs transition-colors"
-                                    >
-                                      <Navigation className="w-3.5 h-3.5 text-emerald-600" />
-                                      <span>{trip.checkpoints.length} Titik Terlapor</span>
-                                      {expandedTripCheckpoints[trip.id] ? (
-                                        <ChevronUp className="w-3.5 h-3.5" />
-                                      ) : (
-                                        <ChevronDown className="w-3.5 h-3.5" />
-                                      )}
-                                    </button>
-                                  )}
+                                  <div className="flex items-center gap-2 flex-wrap self-start sm:self-center">
+                                    {trip.status === "ONGOING" && (
+                                      <button
+                                        type="button"
+                                        onClick={() => openCheckpointModal(trip)}
+                                        className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                                      >
+                                        <Navigation className="w-3.5 h-3.5" />
+                                        <span>Update Lokasi</span>
+                                      </button>
+                                    )}
+                                    {trip.checkpoints && trip.checkpoints.length > 0 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => toggleCheckpoints(trip.id)}
+                                        className="px-3 py-1.5 rounded-xl bg-white text-emerald-800 border border-emerald-200 text-xs font-bold hover:bg-emerald-50 flex items-center gap-1.5 shrink-0 shadow-2xs transition-colors cursor-pointer"
+                                      >
+                                        <Navigation className="w-3.5 h-3.5 text-emerald-600" />
+                                        <span>{trip.checkpoints.length} Titik Terlapor</span>
+                                        {expandedTripCheckpoints[trip.id] ? (
+                                          <ChevronUp className="w-3.5 h-3.5" />
+                                        ) : (
+                                          <ChevronDown className="w-3.5 h-3.5" />
+                                        )}
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
 
                                 {/* Checkpoints Timeline */}
@@ -547,9 +723,22 @@ export default function TravelTripsPage() {
                                   })}
                                 </div>
                               ) : (
-                                <p className="text-xs text-slate-400 italic">
-                                  Belum ada Guide atau Driver yang ditugaskan untuk jadwal trip ini.
-                                </p>
+                                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                                  <div className="space-y-0.5">
+                                    <p className="font-bold text-slate-800">Perjalanan Mandiri (Tanpa Kru)</p>
+                                    <p className="text-[11px] text-slate-500">
+                                      Penugasan Tour Guide &amp; Driver bersifat opsional. Anda tidak diwajibkan menugaskan kru dan perjalanan tetap dapat dijalankan sesuai jadwal tanggal keberangkatan.
+                                    </p>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => openAssignModal(trip)}
+                                    className="px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 font-bold text-xs flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer"
+                                  >
+                                    <UserPlus className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span>Tugaskan Kru (Opsional)</span>
+                                  </button>
+                                </div>
                               )}
                             </div>
                           </div>
@@ -568,6 +757,122 @@ export default function TravelTripsPage() {
         )}
 
       </div>
+
+      {/* Checkpoint Modal for Travel Partner */}
+      {checkpointModalOpen && activeCheckpointTrip && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block">
+                  Update Posisi Rombongan
+                </span>
+                <h3 className="font-bold text-slate-900 text-base">Lapor Titik Lokasi Perjalanan</h3>
+              </div>
+              <button
+                onClick={() => setCheckpointModalOpen(false)}
+                className="text-slate-400 hover:text-slate-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-500">
+              Laporkan titik lokasi rombongan saat ini agar terpantau pada linimasa live tracking wisatawan.
+            </p>
+
+            {/* Quick-pick predefined routes if available */}
+            {(() => {
+              let stops: string[] = [];
+              try {
+                const raw = activeCheckpointTrip.package?.checkpointRoute;
+                if (raw) {
+                  stops = Array.isArray(raw) ? raw : JSON.parse(raw);
+                }
+              } catch {
+                stops = [];
+              }
+              if (stops.length > 0) {
+                return (
+                  <div className="space-y-1.5">
+                    <label className="block text-[11px] font-bold text-slate-600">
+                      Pilih dari Rencana Rute:
+                    </label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {stops.map((stop: string, i: number) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setCheckpointLocation(stop)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${
+                            checkpointLocation === stop
+                              ? "bg-emerald-600 text-white border-emerald-600"
+                              : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
+                          }`}
+                        >
+                          {i + 1}. {stop}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Nama Titik Lokasi / Checkpoint <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Contoh: Tiba di Dermaga / Istirahat Makan Siang"
+                  value={checkpointLocation}
+                  onChange={(e) => setCheckpointLocation(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-emerald-500 text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Catatan Tambahan (Opsional)
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Contoh: Rombongan tiba dengan selamat, cuaca cerah."
+                  value={checkpointNote}
+                  onChange={(e) => setCheckpointNote(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-emerald-500 text-slate-900"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setCheckpointModalOpen(false)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitCheckpoint}
+                disabled={!checkpointLocation.trim() || submittingCheckpoint}
+                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer disabled:cursor-not-allowed"
+              >
+                {submittingCheckpoint ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                ) : (
+                  <Navigation className="w-3.5 h-3.5" />
+                )}
+                <span>Simpan Titik Lokasi</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Pay Fee Modal — REQ-5.3 */}
       {payFeeModalOpen && (

@@ -110,8 +110,8 @@ export async function POST(request: Request) {
       }
 
       const successMsg = isDP
-        ? "Pembayaran DP berhasil diverifikasi! Jadwal Trip telah diaktifkan, silakan lanjutkan penugasan kru driver & guide."
-        : "Pembayaran lunas berhasil diverifikasi. Trip Room telah aktif!";
+        ? "Pembayaran DP berhasil diverifikasi! Jadwal Trip telah aktif (penugasan kru opsional, perjalanan dapat dijalankan mandiri)."
+        : "Pembayaran lunas berhasil diverifikasi. Trip Room telah aktif (penugasan kru opsional).";
 
       // Notifikasi ke customer
       await createNotification({
