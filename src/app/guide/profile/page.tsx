@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Upload, FileText, AlertCircle, CheckCircle2 } from "lucide-react";
+import ChangePasswordSection from "@/components/ChangePasswordSection";
 import { useToast } from "@/components/Toast";
 
 export default function GuideProfilePage() {
@@ -181,11 +182,14 @@ export default function GuideProfilePage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+      toast.success("Profil tour guide berhasil diperbarui!");
       setSuccess(true);
       window.dispatchEvent(new Event("auth-change"));
       setTimeout(() => router.push("/guide/dashboard"), 1500);
     } catch (err: any) {
-      setError(err.message || "Gagal menyimpan profil.");
+      const msg = err.message || "Gagal menyimpan profil.";
+      setError(msg);
+      toast.error(msg);
     } finally { setSaving(false); }
   };
 
@@ -516,6 +520,9 @@ export default function GuideProfilePage() {
             </button>
           </div>
         </form>
+
+        {/* Fitur Ubah Kata Sandi Akun Tour Guide (Batas 2 Bulan Sekali) */}
+        <ChangePasswordSection />
       </div>
     </div>
   );

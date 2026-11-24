@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { createNotification } from "@/lib/notifications";
 
 export async function GET() {
   try {
@@ -123,6 +124,13 @@ export async function PATCH(req: Request) {
         data: userUpdateData,
       });
     }
+
+    await createNotification({
+      userId: session.userId,
+      type: "ACCOUNT_SECURITY",
+      title: "Profil Agensi Travel Diperbarui",
+      message: "Data profil agensi travel Anda telah berhasil diperbarui.",
+    });
 
     return NextResponse.json({ message: "Profile updated successfully", travel: updatedTravel });
   } catch (error) {

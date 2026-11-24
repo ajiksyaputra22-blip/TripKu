@@ -1,6 +1,6 @@
 import prisma from "./prisma";
 
-export type NotificationType = "BOOKING" | "PAYMENT" | "ASSIGNMENT" | "TRIP_UPDATE";
+export type NotificationType = "BOOKING" | "PAYMENT" | "ASSIGNMENT" | "TRIP_UPDATE" | "ACCOUNT_SECURITY";
 
 interface CreateNotificationParams {
   userId: string;

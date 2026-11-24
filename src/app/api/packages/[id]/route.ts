@@ -82,26 +82,28 @@ export async function GET(
       );
     }
 
-    // REQ-3.1: Auto-deactivate if past bookingDeadline (or H-1 fallback)
+    // REQ-3.1: Auto-deactivate if past bookingDeadline (or H-1 fallback) - Khusus OPEN TRIP saja
     const now = new Date();
     let currentStatus = pkg.status;
     let isExpired = false;
-    if (pkg.bookingDeadline) {
-      const deadline = new Date(pkg.bookingDeadline);
-      if (deadline.getUTCHours() === 0 && deadline.getUTCMinutes() === 0) {
-        deadline.setUTCHours(23, 59, 59, 999);
+    if (pkg.tripType !== "PRIVATE") {
+      if (pkg.bookingDeadline) {
+        const deadline = new Date(pkg.bookingDeadline);
+        if (deadline.getUTCHours() === 0 && deadline.getUTCMinutes() === 0) {
+          deadline.setUTCHours(23, 59, 59, 999);
+        }
+        isExpired = now.getTime() > deadline.getTime();
+      } else if (pkg.departureDate) {
+        isExpired = new Date(pkg.departureDate).getTime() - now.getTime() <= 1 * 24 * 60 * 60 * 1000;
       }
-      isExpired = now.getTime() > deadline.getTime();
-    } else if (pkg.departureDate) {
-      isExpired = new Date(pkg.departureDate).getTime() - now.getTime() <= 1 * 24 * 60 * 60 * 1000;
-    }
 
-    if (pkg.status === "PUBLISHED" && isExpired) {
-      await prisma.package.update({
-        where: { id: pkg.id },
-        data: { status: "INACTIVE" },
-      });
-      currentStatus = "INACTIVE";
+      if (pkg.status === "PUBLISHED" && isExpired) {
+        await prisma.package.update({
+          where: { id: pkg.id },
+          data: { status: "INACTIVE" },
+        });
+        currentStatus = "INACTIVE";
+      }
     }
 
     // Fetch reviews for this package

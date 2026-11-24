@@ -483,7 +483,7 @@ function TravelDashboardContent() {
                                               </h4>
                                               <p className="text-[11px] text-slate-400 mt-0.5">
                                                 {pkg.status === "PUBLISHED"
-                                                  ? "Wisatawan yang terdaftar pada perjalanan aktif saat ini."
+                                                  ? "Wisatawan yang terdaftar."
                                                   : "Semua wisatawan dari seluruh booking pada paket ini."}
                                               </p>
                                             </div>
@@ -602,7 +602,7 @@ function TravelDashboardContent() {
                                               Menunggu Konfirmasi Kru
                                             </span>
                                           ) : (
-                                            <span className="font-semibold text-slate-500">Belum Ditugaskan (Opsional)</span>
+                                            <span className="font-semibold text-slate-500">Belum Ditugaskan</span>
                                           )}
                                         </div>
                                         {guide && (
@@ -636,7 +636,7 @@ function TravelDashboardContent() {
                                               Menunggu Konfirmasi Kru
                                             </span>
                                           ) : (
-                                            <span className="font-semibold text-slate-500">Belum Ditugaskan (Opsional)</span>
+                                            <span className="font-semibold text-slate-500">Belum Ditugaskan</span>
                                           )}
                                         </div>
                                         {driver && (
@@ -689,8 +689,8 @@ function TravelDashboardContent() {
                                               const bothRejected = guide?.status === "REJECTED" && driver?.status === "REJECTED";
                                               const anyRejected = guide?.status === "REJECTED" || driver?.status === "REJECTED";
 
-                                              let buttonLabel = "Tugaskan Kru (Opsional)";
-                                              let buttonTitle = "Tugaskan kru untuk perjalanan ini (opsional)";
+                                              let buttonLabel = "Tugaskan Kru";
+                                              let buttonTitle = "Tugaskan kru untuk perjalanan ini";
 
                                               if (allAccepted) {
                                                 buttonLabel = "Penugasan Selesai";

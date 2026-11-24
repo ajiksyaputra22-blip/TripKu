@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { createNotification } from "@/lib/notifications";
 
 // GET: Get worker profile for logged-in guide/driver
 export async function GET() {
@@ -180,6 +181,13 @@ export async function PATCH(request: Request) {
         certificateUrl: certificateUrl || undefined,
         profileCompleted: isCompleted,
       },
+    });
+
+    await createNotification({
+      userId: session.userId,
+      type: "ACCOUNT_SECURITY",
+      title: session.role === "DRIVER" ? "Profil Driver Diperbarui" : "Profil Tour Guide Diperbarui",
+      message: `Data profil ${session.role === "DRIVER" ? "driver armada" : "tour guide"} Anda berhasil diperbarui.`,
     });
 
     return NextResponse.json({ success: true, profile: updatedProfile });

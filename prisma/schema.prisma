@@ -18,13 +18,13 @@ model User {
   role          String           @default("CUSTOMER")
   status        String           @default("ACTIVE")
   avatarUrl     String?
+  passwordChangedAt DateTime?
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
   assignments   Assignment[]     @relation("WorkerAssignments")
   bookings      Booking[]
   reviews       Review[]
   travelProfile Travel?
-  attendances   TripAttendance[]
   checkpoints   TripCheckpoint[]
   tripUpdates   TripUpdate[]
   workerProfile WorkerProfile?
@@ -32,6 +32,19 @@ model User {
   workerReviews WorkerReview[]   @relation("ReviewedWorker")
   notifications Notification[]
   crewApplications CrewApplication[] @relation("WorkerApplications")
+  passwordResetOtps PasswordResetOtp[]
+}
+
+model PasswordResetOtp {
+  id        String   @id @default(cuid())
+  userId    String
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Travel {
@@ -314,18 +327,18 @@ model TripCheckpoint {
 }
 
 model TripAttendance {
-  id         String   @id @default(cuid())
-  tripId     String
-  customerId String
-  recordedBy String   @default("")
-  type       String
-  isPresent  Boolean  @default(false)
-  note       String?
-  recordedAt DateTime @default(now())
-  customer   User     @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  trip       Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  id              String   @id @default(cuid())
+  tripId          String
+  customerId      String   // booking owner's userId (for reference only, NOT FK)
+  participantName String   @default("") // name of the individual participant
+  recordedBy      String   @default("")
+  type            String
+  isPresent       Boolean  @default(false)
+  note            String?
+  recordedAt      DateTime @default(now())
+  trip            Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
 
-  @@unique([tripId, customerId, type])
+  @@unique([tripId, participantName, type])
 }
 
 model CrewApplication {

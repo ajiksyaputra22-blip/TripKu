@@ -15,6 +15,8 @@ import {
   CreditCard,
   CheckCircle2,
   Clock,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useToast } from "@/components/Toast";
 
@@ -45,6 +47,12 @@ export default function BookingPage() {
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [checkingAvailability, setCheckingAvailability] = useState<boolean>(false);
   const [dateAvailabilityInfo, setDateAvailabilityInfo] = useState<any>(null);
+  const [calendarOccupancy, setCalendarOccupancy] = useState<Record<string, number>>({});
+  const [loadingCalendar, setLoadingCalendar] = useState<boolean>(false);
+  const [calendarMonth, setCalendarMonth] = useState<Date>(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -117,6 +125,41 @@ export default function BookingPage() {
       return updated;
     });
   };
+
+  // Fetch calendar occupancy for the displayed month
+  useEffect(() => {
+    if (!pkg || pkg.tripType !== "PRIVATE") return;
+
+    const fetchOccupancy = async () => {
+      setLoadingCalendar(true);
+      try {
+        const year = calendarMonth.getFullYear();
+        const month = calendarMonth.getMonth();
+        const startDate = new Date(year, month, 1).toISOString().substring(0, 10);
+        const endDate = new Date(year, month + 1, 0).toISOString().substring(0, 10);
+
+        const res = await fetch("/api/packages/availability", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            packageId: pkg.id,
+            startDate,
+            endDate,
+          }),
+        });
+        const data = await res.json();
+        if (res.ok && data.occupancy) {
+          setCalendarOccupancy(data.occupancy);
+        }
+      } catch {
+        // silent fail
+      } finally {
+        setLoadingCalendar(false);
+      }
+    };
+
+    fetchOccupancy();
+  }, [pkg, calendarMonth]);
 
   // Check date availability for Private Trip
   const handleDateSelect = async (dateVal: string) => {
@@ -373,7 +416,7 @@ export default function BookingPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                       <label className="block text-xs font-bold text-indigo-950 flex items-center gap-1.5">
                         <Calendar className="w-4 h-4 text-indigo-600" />
-                        Pilih Tanggal Mulai Perjalanan (Private Trip) *
+                        Pilih Tanggal Mulai Perjalanan
                       </label>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 self-start sm:self-auto">
                         Durasi: {pkg.durationDays} Hari
@@ -381,21 +424,187 @@ export default function BookingPage() {
                     </div>
 
                     <p className="text-[11px] text-slate-600">
-                      Private trip tersedia <strong>setiap hari</strong>. Silakan tentukan tanggal keberangkatan yang Anda inginkan:
+                      Silakan tentukan tanggal keberangkatan yang Anda inginkan:
                     </p>
 
-                    <div>
-                      <input
-                        type="date"
-                        required={pkg.tripType === "PRIVATE"}
-                        value={selectedDate}
-                        min={new Date().toISOString().substring(0, 10)}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          handleDateSelect(val);
-                        }}
-                        className="w-full sm:w-64 px-3 py-2 text-xs rounded-xl bg-white border border-indigo-300 font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 shadow-2xs"
-                      />
+                    {/* Kalender Interaktif Pemilihan Tanggal */}
+                    <div className="bg-white rounded-xl border border-indigo-200 p-3.5 shadow-2xs space-y-3">
+                      {/* Header Bulan & Navigasi */}
+                      <div className="flex items-center justify-between">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCalendarMonth((prev) => {
+                              const d = new Date(prev);
+                              d.setMonth(d.getMonth() - 1);
+                              return d;
+                            });
+                          }}
+                          disabled={
+                            calendarMonth.getFullYear() === new Date().getFullYear() &&
+                            calendarMonth.getMonth() <= new Date().getMonth()
+                          }
+                          className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                          title="Bulan sebelumnya"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+
+                        <div className="text-center">
+                          <p className="text-xs sm:text-sm font-bold text-slate-900">
+                            {calendarMonth.toLocaleDateString("id-ID", { month: "long", year: "numeric" })}
+                          </p>
+                          <p className="text-[10px] text-slate-500">
+                            Maks. Kuota Harian: <strong className="text-indigo-600">{pkg.dailyQuota || pkg.capacity} orang</strong>
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCalendarMonth((prev) => {
+                              const d = new Date(prev);
+                              d.setMonth(d.getMonth() + 1);
+                              return d;
+                            });
+                          }}
+                          className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+                          title="Bulan berikutnya"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Hari dalam seminggu */}
+                      <div className="grid grid-cols-7 gap-1 text-center">
+                        {["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"].map((dayName, idx) => (
+                          <div
+                            key={idx}
+                            className={`text-[10px] font-bold py-1 ${idx === 0 || idx === 6 ? "text-rose-500" : "text-slate-500"
+                              }`}
+                          >
+                            {dayName}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Sel Tanggal */}
+                      <div className="grid grid-cols-7 gap-1">
+                        {(() => {
+                          const year = calendarMonth.getFullYear();
+                          const month = calendarMonth.getMonth();
+                          const firstDayOfMonth = new Date(year, month, 1).getDay();
+                          const daysInMonth = new Date(year, month + 1, 0).getDate();
+                          const todayStr = new Date().toISOString().substring(0, 10);
+                          const dailyQuota = pkg.dailyQuota || pkg.capacity || 50;
+
+                          const cells = [];
+                          // Blank cells before month start
+                          for (let i = 0; i < firstDayOfMonth; i++) {
+                            cells.push(<div key={`blank-${i}`} className="h-12 sm:h-14" />);
+                          }
+
+                          // Days of current month
+                          for (let day = 1; day <= daysInMonth; day++) {
+                            const dateObj = new Date(year, month, day);
+                            const monthFormatted = String(month + 1).padStart(2, "0");
+                            const dayFormatted = String(day).padStart(2, "0");
+                            const dateStr = `${year}-${monthFormatted}-${dayFormatted}`;
+
+                            const isPast = dateStr < todayStr;
+                            const isToday = dateStr === todayStr;
+                            const isSelected = selectedDate === dateStr;
+
+                            const bookedPax = calendarOccupancy[dateStr] || 0;
+                            const remainingPax = Math.max(0, dailyQuota - bookedPax);
+                            const isFull = remainingPax <= 0;
+                            const cannotFitGroup = remainingPax < participantCount;
+
+                            // Tanggal abu-abu dan tidak bisa diklik jika sudah lewat atau kuota habis
+                            const isDisabled = isPast || isFull;
+
+                            cells.push(
+                              <button
+                                key={dateStr}
+                                type="button"
+                                disabled={isDisabled}
+                                onClick={() => handleDateSelect(dateStr)}
+                                className={`relative h-12 sm:h-14 p-1 rounded-xl text-left border flex flex-col justify-between transition-all ${isSelected
+                                  ? "bg-indigo-600 text-white border-indigo-600 shadow-md ring-2 ring-indigo-400 ring-offset-1 z-10"
+                                  : isDisabled
+                                    ? "bg-slate-100/90 text-slate-400 border-slate-200 cursor-not-allowed opacity-60"
+                                    : cannotFitGroup
+                                      ? "bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-200 cursor-pointer"
+                                      : "bg-white hover:bg-indigo-50 text-slate-800 border-slate-200 hover:border-indigo-300 cursor-pointer"
+                                  }`}
+                                title={
+                                  isPast
+                                    ? "Tanggal sudah lewat"
+                                    : isFull
+                                      ? "Kuota pada tanggal ini sudah penuh (0 tersisa)"
+                                      : cannotFitGroup
+                                        ? `Sisa kuota (${remainingPax} orang) tidak cukup untuk rombongan ${participantCount} orang Anda`
+                                        : `Tersedia: sisa ${remainingPax} kuota`
+                                }
+                              >
+                                <div className="flex items-center justify-between w-full">
+                                  <span
+                                    className={`text-xs font-bold ${isSelected
+                                      ? "text-white"
+                                      : isToday
+                                        ? "text-indigo-600 underline"
+                                        : isDisabled
+                                          ? "text-slate-400"
+                                          : "text-slate-800"
+                                      }`}
+                                  >
+                                    {day}
+                                  </span>
+                                  {isFull && !isPast && (
+                                    <span className="text-[9px] font-extrabold px-1 py-0.2 rounded bg-rose-100 text-rose-700">
+                                      Penuh
+                                    </span>
+                                  )}
+                                </div>
+
+                                {!isPast && (
+                                  <div className="w-full">
+                                    <p
+                                      className={`text-[9px] truncate font-medium ${isSelected
+                                        ? "text-indigo-100 font-semibold"
+                                        : isFull
+                                          ? "text-rose-500 font-bold"
+                                          : cannotFitGroup
+                                            ? "text-amber-700 font-semibold"
+                                            : "text-emerald-600 font-semibold"
+                                        }`}
+                                    >
+                                      {isFull ? "Habis" : `Sisa ${remainingPax}`}
+                                    </p>
+                                  </div>
+                                )}
+                              </button>
+                            );
+                          }
+                          return cells;
+                        })()}
+                      </div>
+
+                      {/* Legenda Keterangan Warna Kalender */}
+                      <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-100 text-[10px] text-slate-500">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-3 h-3 rounded bg-white border border-slate-300" />
+                          <span>Tersedia</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-3 h-3 rounded bg-indigo-600" />
+                          <span>Dipilih</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-3 h-3 rounded bg-amber-50 border border-amber-300" />
+                          <span>Kuota Kurang</span>
+                        </div>
+                      </div>
                     </div>
 
                     {checkingAvailability && (
@@ -407,8 +616,8 @@ export default function BookingPage() {
 
                     {dateAvailabilityInfo && (
                       <div className={`p-3 rounded-xl border text-xs ${dateAvailabilityInfo.canFit
-                          ? "bg-emerald-50 border-emerald-200 text-emerald-900"
-                          : "bg-rose-50 border-rose-200 text-rose-900"
+                        ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+                        : "bg-rose-50 border-rose-200 text-rose-900"
                         }`}>
                         {dateAvailabilityInfo.canFit ? (
                           <div className="flex items-start gap-2">

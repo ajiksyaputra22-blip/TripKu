@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { User, Upload, CheckCircle2, AlertCircle } from "lucide-react";
+import ChangePasswordSection from "@/components/ChangePasswordSection";
 import { useToast } from "@/components/Toast";
 
 export default function CustomerProfilePage() {
@@ -93,6 +94,7 @@ export default function CustomerProfilePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Gagal menyimpan profil");
 
+      toast.success("Profil Anda berhasil diperbarui!");
       setSuccess(true);
       window.dispatchEvent(new Event("auth-change"));
       // Automatically hide success message after 3 seconds
@@ -101,7 +103,9 @@ export default function CustomerProfilePage() {
       // Update local profile state
       setProfile((prev: any) => ({ ...prev, ...data.user }));
     } catch (err: any) {
-      setError(err.message || "Gagal menyimpan profil.");
+      const msg = err.message || "Gagal menyimpan profil.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -257,6 +261,9 @@ export default function CustomerProfilePage() {
             </button>
           </div>
         </form>
+
+        {/* Fitur Ubah Kata Sandi Akun (Batas 2 Bulan Sekali) */}
+        <ChangePasswordSection />
 
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { createNotification } from "@/lib/notifications";
 
 export async function PATCH(
   request: Request,
@@ -24,6 +25,13 @@ export async function PATCH(
       where: { id },
       include: {
         package: true,
+        booking: {
+          select: {
+            id: true,
+            customerId: true,
+            bookingCode: true,
+          },
+        },
         assignments: {
           include: {
             fee: true,
@@ -84,6 +92,23 @@ export async function PATCH(
         }
       }
 
+      // Jika perjalanan mandiri tanpa Guide/kru dan dimulai oleh pihak Travel: wajib Absen Berangkat dulu
+      const hasGuideAssigned = trip.assignments.some(
+        (a) => a.role === "GUIDE" && ["ACCEPTED", "ASSIGNED", "CONFIRMED"].includes(a.status)
+      );
+      if (!hasGuideAssigned && isTravelOwner) {
+        const hasDepartureAttendance =
+          trip.departureAttendanceDone ||
+          trip.attendances.some((att) => att.type === "DEPARTURE");
+
+        if (!hasDepartureAttendance) {
+          return NextResponse.json(
+            { error: "Perjalanan mandiri wajib melakukan 'Absen Berangkat' wisatawan terlebih dahulu sebelum bisa memulai perjalanan." },
+            { status: 400 }
+          );
+        }
+      }
+
       // Check mutual confirmation for Guide and Driver
       const guideAssignment = trip.assignments.find((a) => a.role === "GUIDE" && a.status === "ACCEPTED");
       const driverAssignment = trip.assignments.find((a) => a.role === "DRIVER" && a.status === "ACCEPTED");
@@ -123,6 +148,41 @@ export async function PATCH(
           driverStartedAt,
         },
       });
+
+      // Kirim notifikasi ke pelanggan/customer bahwa trip telah aktif dan resmi dimulai
+      try {
+        const customerIdsToNotify = new Set<string>();
+        if (trip.booking?.customerId) {
+          customerIdsToNotify.add(trip.booking.customerId);
+        }
+
+        // Jika Open Trip tanpa direct bookingId di trip, cari seluruh booking CONFIRMED untuk paket ini
+        if (trip.packageId && !trip.bookingId) {
+          const packageBookings = await prisma.booking.findMany({
+            where: {
+              packageId: trip.packageId,
+              status: { in: ["CONFIRMED", "PAID"] },
+            },
+            select: { customerId: true },
+          });
+          packageBookings.forEach((b) => {
+            if (b.customerId) customerIdsToNotify.add(b.customerId);
+          });
+        }
+
+        const packageName = trip.package?.name || "Wisata";
+        for (const cId of customerIdsToNotify) {
+          await createNotification({
+            userId: cId,
+            type: "TRIP_UPDATE",
+            title: "Perjalanan Wisata Telah Dimulai! 🚀",
+            message: `Kabar gembira! Paket perjalanan "${packageName}" Anda telah resmi dimulai oleh pihak pelaksana. Selamat berwisata dan nikmati liburan Anda!`,
+            link: "/customer/bookings",
+          });
+        }
+      } catch (notifErr) {
+        console.error("Gagal mengirim notifikasi trip dimulai ke customer:", notifErr);
+      }
 
       return NextResponse.json({
         success: true,
@@ -165,21 +225,32 @@ export async function PATCH(
         trip.currentLocation === lastStop ||
         (dest && trip.currentLocation?.toLowerCase() === dest.toLowerCase());
 
-      if (!hasReachedAllStops && !isAdmin && !isTravelOwner && session.role !== "DRIVER") {
+      if (!hasReachedAllStops && !isAdmin && session.role !== "DRIVER") {
         return NextResponse.json(
-          { error: `Perjalanan belum dapat diselesaikan. Seluruh titik rute (${trip.checkpoints.length}/${stops.length}) wajib dilaporkan terlebih dahulu melalui tombol 'Lapor Titik'.` },
+          { error: `Perjalanan belum dapat diselesaikan. Seluruh titik rute (${trip.checkpoints.length}/${stops.length}) wajib dilaporkan hingga titik akhir terlebih dahulu melalui tombol 'Lapor Titik'.` },
           { status: 400 }
         );
       }
 
       const hasGuide = trip.assignments.some((a) => a.role === "GUIDE" && a.status === "ACCEPTED");
-      if (hasGuide && !isAdmin && !isTravelOwner && session.role !== "DRIVER") {
+      if (hasGuide && !isAdmin && session.role !== "DRIVER") {
         const hasReturnAttendance =
           trip.returnAttendanceDone ||
           trip.attendances.some((att) => att.type === "RETURN");
         if (!hasReturnAttendance) {
           return NextResponse.json(
             { error: "Perjalanan belum dapat diselesaikan. Tour Guide wajib melakukan 'Absen Pulang' wisatawan di titik akhir terlebih dahulu." },
+            { status: 400 }
+          );
+        }
+      } else if (!hasGuide && !isAdmin && isTravelOwner) {
+        // Jika perjalanan mandiri tanpa kru, pihak travel wajib melakukan 'Absen Pulang' wisatawan di titik akhir
+        const hasReturnAttendance =
+          trip.returnAttendanceDone ||
+          trip.attendances.some((att) => att.type === "RETURN");
+        if (!hasReturnAttendance) {
+          return NextResponse.json(
+            { error: "Perjalanan mandiri belum dapat diselesaikan. Pihak travel wajib melakukan 'Absen Pulang' wisatawan di titik akhir terlebih dahulu." },
             { status: 400 }
           );
         }
@@ -202,6 +273,38 @@ export async function PATCH(
           where: { id: trip.bookingId },
           data: { status: "COMPLETED" },
         });
+      }
+
+      // Kirim notifikasi ke pelanggan/customer bahwa trip telah selesai
+      try {
+        const customerIdsToNotify = new Set<string>();
+        if (trip.booking?.customerId) {
+          customerIdsToNotify.add(trip.booking.customerId);
+        }
+        if (trip.packageId && !trip.bookingId) {
+          const packageBookings = await prisma.booking.findMany({
+            where: {
+              packageId: trip.packageId,
+              status: { in: ["CONFIRMED", "PAID", "COMPLETED"] },
+            },
+            select: { customerId: true },
+          });
+          packageBookings.forEach((b) => {
+            if (b.customerId) customerIdsToNotify.add(b.customerId);
+          });
+        }
+        const packageName = trip.package?.name || "Wisata";
+        for (const cId of customerIdsToNotify) {
+          await createNotification({
+            userId: cId,
+            type: "TRIP_UPDATE",
+            title: "Perjalanan Telah Selesai! 🎉",
+            message: `Perjalanan paket wisata "${packageName}" telah selesai dilaksanakan. Terima kasih telah berwisata bersama kami! Jangan lupa berikan ulasan Anda.`,
+            link: "/customer/bookings",
+          });
+        }
+      } catch (notifErr) {
+        console.error("Gagal mengirim notifikasi trip selesai ke customer:", notifErr);
       }
 
       return NextResponse.json({

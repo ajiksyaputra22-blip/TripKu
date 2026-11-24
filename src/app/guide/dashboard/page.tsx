@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import NegotiationChatModal from "@/components/NegotiationChatModal";
 import WorkerJobVacancies from "@/components/WorkerJobVacancies";
+import ConfirmDialog, { ConfirmVariant } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
 
 export default function GuideDashboardPage() {
@@ -44,6 +45,24 @@ export default function GuideDashboardPage() {
   const [existingAttendances, setExistingAttendances] = useState<any[]>([]);
   const [savingAttendance, setSavingAttendance] = useState(false);
   const [attendanceViewOnly, setAttendanceViewOnly] = useState(false);
+
+  // Custom confirmation dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText: string;
+    variant: ConfirmVariant;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    confirmText: "Konfirmasi",
+    variant: "emerald",
+    onConfirm: () => {},
+  });
+  const [statusUpdating, setStatusUpdating] = useState(false);
 
   const fetchAssignments = async () => {
     setLoading(true);
@@ -150,22 +169,38 @@ export default function GuideDashboardPage() {
   };
 
   const handleUpdateTripStatus = async (tripId: string, status: "ONGOING" | "COMPLETED") => {
-    try {
-      const res = await fetch(`/api/trips/${tripId}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        toast.success(data.message || "Status perjalanan berhasil diperbarui!");
-        fetchAssignments();
-      } else {
-        toast.error(data.error || "Gagal memperbarui status perjalanan.");
-      }
-    } catch {
-      toast.error("Gagal memperbarui status perjalanan.");
-    }
+    const isOngoing = status === "ONGOING";
+    setConfirmDialog({
+      isOpen: true,
+      title: isOngoing ? "Mulai Perjalanan Trip?" : "Selesaikan Perjalanan Wisata?",
+      message: isOngoing
+        ? "Mulai perjalanan ini sekarang? Status perjalanan akan berubah menjadi Berjalan (ONGOING) dan sistem akan otomatis mengirim notifikasi ke pelanggan bahwa perjalanan wisata telah resmi dimulai."
+        : "Selesaikan perjalanan ini? Seluruh rombongan akan ditandai telah selesai berwisata dan sistem akan mengirim notifikasi kepada pelanggan.",
+      confirmText: isOngoing ? "Ya, Mulai Perjalanan" : "Ya, Selesaikan Trip",
+      variant: isOngoing ? "emerald" : "primary",
+      onConfirm: async () => {
+        setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+        setStatusUpdating(true);
+        try {
+          const res = await fetch(`/api/trips/${tripId}/status`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status }),
+          });
+          const data = await res.json();
+          if (res.ok) {
+            toast.success(data.message || "Status perjalanan berhasil diperbarui!");
+            fetchAssignments();
+          } else {
+            toast.error(data.error || "Gagal memperbarui status perjalanan.");
+          }
+        } catch {
+          toast.error("Gagal memperbarui status perjalanan.");
+        } finally {
+          setStatusUpdating(false);
+        }
+      },
+    });
   };
 
   const openCheckpointModal = (trip: any) => {
@@ -785,39 +820,52 @@ export default function GuideDashboardPage() {
                   {/* Route Stop List */}
                   <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
                     {routeStops.map((stop, idx) => {
-                      const reportedLocs = (activeTrip.checkpoints || []).map((cp: any) => cp.location);
-                      const isPast = reportedLocs.includes(stop) || (activeTrip.currentLocation && routeStops.indexOf(activeTrip.currentLocation) > idx);
+                      const reportedLocs = (activeTrip.checkpoints || []).map((cp: any) => cp.location?.trim().toLowerCase());
+                      const currLoc = activeTrip.currentLocation?.trim().toLowerCase();
+
+                      let highestReportedIndex = -1;
+                      routeStops.forEach((s: string, i: number) => {
+                        const sNorm = s.trim().toLowerCase();
+                        if (reportedLocs.includes(sNorm) || currLoc === sNorm) {
+                          if (i > highestReportedIndex) highestReportedIndex = i;
+                        }
+                      });
+
+                      const isDone = reportedLocs.includes(stop.trim().toLowerCase()) || idx <= highestReportedIndex;
                       const isCurrent = activeTrip.currentLocation === stop;
+
                       return (
                         <button
                           key={idx}
                           type="button"
-                          onClick={() => !submittingCheckpoint && handleClickStop(stop, idx)}
-                          disabled={submittingCheckpoint}
-                          className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all border cursor-pointer ${isCurrent
-                            ? "bg-emerald-50 border-emerald-300 text-emerald-900 font-bold shadow-sm"
-                            : isPast
-                              ? "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
-                              : "bg-white border-slate-200 hover:bg-emerald-50 hover:border-emerald-300 text-slate-800"
+                          onClick={() => !submittingCheckpoint && !isDone && handleClickStop(stop, idx)}
+                          disabled={submittingCheckpoint || isDone}
+                          className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all border ${isDone
+                            ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed opacity-60 select-none"
+                            : isCurrent
+                              ? "bg-emerald-50 border-emerald-300 text-emerald-900 font-bold shadow-xs cursor-pointer"
+                              : "bg-white border-slate-200 hover:bg-emerald-50 hover:border-emerald-300 text-slate-800 cursor-pointer"
                             }`}
                         >
-                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold shrink-0 ${isCurrent ? "bg-emerald-500 text-white" :
-                            isPast ? "bg-emerald-100 text-emerald-700 border border-emerald-300" :
-                              "bg-slate-100 text-slate-600"
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold shrink-0 ${isDone
+                            ? "bg-slate-200 text-slate-500 border border-slate-300"
+                            : isCurrent
+                              ? "bg-emerald-500 text-white"
+                              : "bg-slate-100 text-slate-600"
                             }`}>
-                            {isPast ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : idx + 1}
+                            {isDone ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : idx + 1}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <span className="text-xs font-semibold truncate block">{stop}</span>
-                            {isCurrent ? (
+                            <span className={`text-xs font-semibold truncate block ${isDone ? "text-slate-500 line-through" : ""}`}>{stop}</span>
+                            {isDone ? (
+                              <span className="text-[10px] text-slate-400 font-medium">✓ Titik tercapai (Selesai)</span>
+                            ) : isCurrent ? (
                               <span className="text-[10px] text-emerald-600 font-bold">Posisi saat ini</span>
-                            ) : isPast ? (
-                              <span className="text-[10px] text-emerald-600 font-medium">✓ Titik tercapai (klik untuk lapor ulang)</span>
                             ) : (
                               <span className="text-[10px] text-slate-400">Klik untuk laporkan titik ini</span>
                             )}
                           </div>
-                          {!isCurrent && (
+                          {!isDone && (
                             <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
                           )}
                         </button>
@@ -1115,6 +1163,18 @@ export default function GuideDashboardPage() {
                 onFeeUpdated={fetchAssignments}
               />
             )}
+
+            {/* Confirm Dialog */}
+            <ConfirmDialog
+              isOpen={confirmDialog.isOpen}
+              onClose={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
+              onConfirm={confirmDialog.onConfirm}
+              title={confirmDialog.title}
+              message={confirmDialog.message}
+              confirmText={confirmDialog.confirmText}
+              variant={confirmDialog.variant}
+              loading={statusUpdating}
+            />
           </>
         )}
 

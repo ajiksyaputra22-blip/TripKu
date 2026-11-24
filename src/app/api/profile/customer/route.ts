@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { createNotification } from "@/lib/notifications";
 
 export async function PATCH(request: Request) {
   try {
@@ -24,6 +25,13 @@ export async function PATCH(request: Request) {
         nik: nik || null,
         avatarUrl: avatarUrl || null,
       },
+    });
+
+    await createNotification({
+      userId: session.userId,
+      type: "ACCOUNT_SECURITY",
+      title: "Profil Berhasil Diperbarui",
+      message: "Data profil akun pelanggan Anda telah berhasil disimpan dan diperbarui.",
     });
 
     return NextResponse.json({

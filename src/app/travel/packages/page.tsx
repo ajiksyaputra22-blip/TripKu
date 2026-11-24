@@ -97,7 +97,21 @@ export default function TravelPackagesPage() {
 
   // Status badge for package: AKTIF -> NONAKTIF / PEMESANAN DITUTUP -> SELESAI
   const pkgStatusBadge = (pkg: any) => {
-    const isCompleted = pkg.status === "COMPLETED" || (pkg.tripType !== "PRIVATE" && pkg.quotaLeft !== undefined && pkg.quotaLeft !== null && pkg.quotaLeft <= 0);
+    // 1. Khusus PRIVATE TRIP: Selalu aktif melayani pemesanan (kecuali travel sengaja menonaktifkan)
+    if (pkg.tripType === "PRIVATE") {
+      if (pkg.status === "INACTIVE") return { label: "NONAKTIF", cls: "bg-rose-50 text-rose-600 border-rose-200" };
+      return { label: "AKTIF", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+    }
+
+    // 2. Khusus OPEN TRIP:
+    // Jika masih ada pesanan aktif (customer) atau perjalanan aktif, paket tetap AKTIF (tidak boleh selesai)
+    const activeBooking = hasActiveBookings(pkg);
+    if (activeBooking) {
+      if (pkg.status === "INACTIVE") return { label: "PEMESANAN DITUTUP", cls: "bg-rose-50 text-rose-600 border-rose-200" };
+      return { label: "AKTIF", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+    }
+
+    const isCompleted = pkg.status === "COMPLETED";
     if (isCompleted) return { label: "SELESAI", cls: "bg-slate-100 text-slate-600 border-slate-300" };
     const closed = isBookingClosed(pkg);
     if (pkg.status === "INACTIVE" || closed) return { label: "PEMESANAN DITUTUP", cls: "bg-rose-50 text-rose-600 border-rose-200" };
@@ -109,8 +123,12 @@ export default function TravelPackagesPage() {
   const sortedPackages = useMemo(() => {
     return [...packages].sort((a: any, b: any) => {
       const getRank = (pkg: any) => {
-        const isCompleted = pkg.status === "COMPLETED" || (pkg.tripType !== "PRIVATE" && pkg.quotaLeft !== undefined && pkg.quotaLeft !== null && pkg.quotaLeft <= 0);
-        if (isCompleted) return 3; // SELESAI (paling bawah)
+        if (pkg.tripType === "PRIVATE") {
+          if (pkg.status === "INACTIVE") return 2;
+          return 1;
+        }
+        if (hasActiveBookings(pkg)) return 1;
+        if (pkg.status === "COMPLETED") return 3; // SELESAI (paling bawah)
         if (pkg.status === "INACTIVE" || isBookingClosed(pkg)) return 2; // INACTIVE / DITUTUP (tengah)
         return 1; // ACTIVE / PUBLISHED (paling atas)
       };

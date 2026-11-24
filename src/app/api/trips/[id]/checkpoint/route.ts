@@ -88,6 +88,20 @@ export async function POST(
       );
     }
 
+    // Validasi: belum tanggalnya berangkat maka tidak bisa lapor titik
+    if (trip.scheduleDate && !isAdmin) {
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+      const tripDate = new Date(trip.scheduleDate);
+      const tripStart = new Date(tripDate.getFullYear(), tripDate.getMonth(), tripDate.getDate()).getTime();
+      if (todayStart < tripStart) {
+        return NextResponse.json(
+          { error: "Laporan titik lokasi hanya dapat dilakukan mulai pada tanggal jadwal keberangkatan." },
+          { status: 400 }
+        );
+      }
+    }
+
     // 1. Create checkpoint record
     const checkpoint = await prisma.tripCheckpoint.create({
       data: {

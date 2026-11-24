@@ -85,6 +85,7 @@ export function isAuthorizedRoute(pathname: string, user: SessionPayload | null)
     (pathname.startsWith("/packages") && !pathname.includes("/book")) ||
     pathname.startsWith("/compare") ||
     pathname.startsWith("/auth") ||
+    pathname.startsWith("/forgot-password") ||
     pathname.startsWith("/about") ||
     pathname.startsWith("/careers") ||
     pathname.startsWith("/help") ||

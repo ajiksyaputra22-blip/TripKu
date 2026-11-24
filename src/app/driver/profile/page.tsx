@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Upload, User, FileText, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/components/Toast";
+import ChangePasswordSection from "@/components/ChangePasswordSection";
 
 export default function DriverProfilePage() {
   const router = useRouter();
@@ -166,11 +167,14 @@ export default function DriverProfilePage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+      toast.success("Profil driver armada berhasil diperbarui!");
       setSuccess(true);
       window.dispatchEvent(new Event("auth-change"));
       setTimeout(() => router.push("/driver/dashboard"), 1500);
     } catch (err: any) {
-      setError(err.message || "Gagal menyimpan profil.");
+      const msg = err.message || "Gagal menyimpan profil.";
+      setError(msg);
+      toast.error(msg);
     } finally { setSaving(false); }
   };
 
@@ -449,6 +453,9 @@ export default function DriverProfilePage() {
             </button>
           </div>
         </form>
+
+        {/* Ubah Kata Sandi */}
+        <ChangePasswordSection />
       </div>
     </div>
   );

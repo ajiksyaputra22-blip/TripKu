@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-// POST: Guide manages attendance (departure/return) for customers
+// POST: Guide / Travel / Admin manages attendance (departure/return) for participants
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -15,14 +15,15 @@ export async function POST(
 
     const { id: tripId } = await params;
     const body = await request.json();
-    const { attendances, type } = body; 
-    // attendances: [{ customerId, isPresent, note }]
+    const { attendances, type } = body;
+    // attendances: [{ customerId, participantName, isPresent, note }]
     // type: "DEPARTURE" | "RETURN"
 
-    if (!attendances || !type) {
+    if (!attendances || !Array.isArray(attendances) || !type) {
       return NextResponse.json({ error: "Data absensi tidak lengkap." }, { status: 400 });
     }
 
+    // Date guard: departure attendance only on the day itself (for GUIDE)
     if (type === "DEPARTURE" && session.role === "GUIDE") {
       const trip = await prisma.trip.findUnique({
         where: { id: tripId },
@@ -42,26 +43,39 @@ export async function POST(
       }
     }
 
+    // Fetch the booking to get the booking owner's customerId
+    const trip = await prisma.trip.findUnique({
+      where: { id: tripId },
+      select: { booking: { select: { customerId: true } } },
+    });
+    const bookingCustomerId = trip?.booking?.customerId || session.userId;
+
+    // Upsert attendance records per participant (using participantName as unique key)
     const results = [];
     for (const att of attendances) {
-      const record = await prisma.tripAttendance.upsert({
+      const participantName: string = att.participantName || "Peserta";
+      const customerId: string = att.customerId || bookingCustomerId;
+
+      const record = await (prisma.tripAttendance as any).upsert({
         where: {
-          tripId_customerId_type: {
+          tripId_participantName_type: {
             tripId,
-            customerId: att.customerId,
+            participantName,
             type,
           },
         },
         create: {
           tripId,
-          customerId: att.customerId,
+          customerId,
+          participantName,
           recordedBy: session.userId,
           type,
-          isPresent: att.isPresent,
+          isPresent: att.isPresent ?? true,
           note: att.note || null,
         },
         update: {
-          isPresent: att.isPresent,
+          customerId,
+          isPresent: att.isPresent ?? true,
           note: att.note || null,
           recordedBy: session.userId,
           recordedAt: new Date(),
@@ -83,7 +97,11 @@ export async function POST(
       });
     }
 
-    return NextResponse.json({ success: true, attendances: results, departureAttendanceDone: type === "DEPARTURE" });
+    return NextResponse.json({
+      success: true,
+      attendances: results,
+      departureAttendanceDone: type === "DEPARTURE",
+    });
   } catch (error) {
     console.error("Attendance error:", error);
     return NextResponse.json({ error: "Gagal menyimpan absensi." }, { status: 500 });
@@ -105,13 +123,10 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type");
 
-    const attendances = await prisma.tripAttendance.findMany({
+    const attendances = await (prisma.tripAttendance as any).findMany({
       where: {
         tripId,
         ...(type ? { type } : {}),
-      },
-      include: {
-        customer: { select: { id: true, name: true, phone: true, nik: true, avatarUrl: true } },
       },
       orderBy: { recordedAt: "asc" },
     });

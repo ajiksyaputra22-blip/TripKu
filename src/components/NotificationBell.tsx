@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Bell, X, CheckCheck, Package, CreditCard, UserCheck, MessageSquare, ExternalLink } from "lucide-react";
+import { Bell, X, CheckCheck, Package, CreditCard, UserCheck, MessageSquare, ExternalLink, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 
 interface Notification {
   id: string;
-  type: "BOOKING" | "PAYMENT" | "ASSIGNMENT" | "TRIP_UPDATE";
+  type: "BOOKING" | "PAYMENT" | "ASSIGNMENT" | "TRIP_UPDATE" | "ACCOUNT_SECURITY";
   title: string;
   message: string;
   isRead: boolean;
@@ -38,6 +38,8 @@ function NotifIcon({ type }: { type: string }) {
       return <div className={`${base} bg-orange-100`}><UserCheck className="w-4 h-4 text-orange-600" /></div>;
     case "TRIP_UPDATE":
       return <div className={`${base} bg-purple-100`}><MessageSquare className="w-4 h-4 text-purple-600" /></div>;
+    case "ACCOUNT_SECURITY":
+      return <div className={`${base} bg-slate-100`}><ShieldCheck className="w-4 h-4 text-slate-600" /></div>;
     default:
       return <div className={`${base} bg-slate-100`}><Bell className="w-4 h-4 text-slate-500" /></div>;
   }

@@ -276,7 +276,7 @@ export default function Navbar() {
                               onClick={() => setProfileDropdownOpen(false)}
                               className="block px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
                             >
-                              Jadwal Perjalanan & Kru
+                              Jadwal Perjalanan
                             </Link>
                             <Link
                               href="/travel/booking-history"
@@ -327,13 +327,22 @@ export default function Navbar() {
                         )}
 
                         {user.role === "ADMIN" && (
-                          <Link
-                            href="/admin/dashboard"
-                            onClick={() => setProfileDropdownOpen(false)}
-                            className="block px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                          >
-                            Dashboard
-                          </Link>
+                          <>
+                            <Link
+                              href="/admin/dashboard"
+                              onClick={() => setProfileDropdownOpen(false)}
+                              className="block px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                            >
+                              Dashboard
+                            </Link>
+                            <Link
+                              href="/admin/profile"
+                              onClick={() => setProfileDropdownOpen(false)}
+                              className="block px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                            >
+                              Profil & Keamanan
+                            </Link>
+                          </>
                         )}
 
                         <div className="border-t border-slate-100 mt-1 pt-1">

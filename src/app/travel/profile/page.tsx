@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Upload, FileText, AlertCircle, CheckCircle2, MapPin, Phone } from "lucide-react";
+import ChangePasswordSection from "@/components/ChangePasswordSection";
 import { useToast } from "@/components/Toast";
 
 export default function TravelProfilePage() {
@@ -117,11 +118,14 @@ export default function TravelProfilePage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+      toast.success("Profil agensi travel berhasil diperbarui!");
       setSuccess(true);
       window.dispatchEvent(new Event("auth-change"));
       setTimeout(() => router.push("/travel/dashboard"), 1500);
     } catch (err: any) {
-      setError(err.message || "Gagal menyimpan profil.");
+      const msg = err.message || "Gagal menyimpan profil.";
+      setError(msg);
+      toast.error(msg);
     } finally { setSaving(false); }
   };
 
@@ -315,6 +319,9 @@ export default function TravelProfilePage() {
             </button>
           </div>
         </form>
+
+        {/* Fitur Ubah Kata Sandi Akun Pihak Travel (Batas 2 Bulan Sekali) */}
+        <ChangePasswordSection />
 
       </div>
     </div>

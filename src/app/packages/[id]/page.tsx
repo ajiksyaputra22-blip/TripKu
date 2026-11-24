@@ -276,7 +276,7 @@ export default async function PackageDetailPage({ params }: PageProps) {
               href={ctaHref}
               className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md shadow-emerald-600/30 transition-all flex items-center justify-center gap-2"
             >
-              <span>Pesan Sekarang (Book Now)</span>
+              <span>Pesan Sekarang (Booking Now)</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
           );

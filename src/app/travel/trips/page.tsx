@@ -23,10 +23,12 @@ import {
   Upload,
   FileText,
   Play,
-  CheckCircle2
+  CheckCircle2,
+  UserCheck
 } from "lucide-react";
 
 import UnifiedAssignCrewModal from "@/components/UnifiedAssignCrewModal";
+import ConfirmDialog, { ConfirmVariant } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
 
 export default function TravelTripsPage() {
@@ -43,6 +45,23 @@ export default function TravelTripsPage() {
   const [startingTripId, setStartingTripId] = useState<string | null>(null);
   const [completingTripId, setCompletingTripId] = useState<string | null>(null);
 
+  // Custom confirmation dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText: string;
+    variant: ConfirmVariant;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    confirmText: "Konfirmasi",
+    variant: "emerald",
+    onConfirm: () => { },
+  });
+
   // Checkpoint modal state
   const [checkpointModalOpen, setCheckpointModalOpen] = useState(false);
   const [activeCheckpointTrip, setActiveCheckpointTrip] = useState<any>(null);
@@ -51,6 +70,119 @@ export default function TravelTripsPage() {
   const [submittingCheckpoint, setSubmittingCheckpoint] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState<string>("");
+
+  // Attendance modal state (untuk perjalanan mandiri tanpa kru)
+  const [attendanceModalOpen, setAttendanceModalOpen] = useState(false);
+  const [attendanceType, setAttendanceType] = useState<"DEPARTURE" | "RETURN">("DEPARTURE");
+  const [attendanceTrip, setAttendanceTrip] = useState<any>(null);
+  const [attendanceData, setAttendanceData] = useState<{ customerId: string; participantName: string; identityNumber: string; phone: string; isPresent: boolean; note: string }[]>([]);
+  const [savingAttendance, setSavingAttendance] = useState(false);
+  const [attendanceViewOnly, setAttendanceViewOnly] = useState(false);
+
+  // Helper: periksa apakah hari tanggal keberangkatan telah tiba
+  const isDepartureDateReached = (scheduleDate: string | Date) => {
+    if (!scheduleDate) return true;
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const tripDate = new Date(scheduleDate);
+    const tripStart = new Date(tripDate.getFullYear(), tripDate.getMonth(), tripDate.getDate()).getTime();
+    return todayStart >= tripStart;
+  };
+
+  // Helper: ambil seluruh checkpoint titik rute
+  const getTripStops = (trip: any) => {
+    let stops: string[] = [];
+    try {
+      const raw = trip.package?.checkpointRoute;
+      if (raw) {
+        if (Array.isArray(raw)) stops = raw;
+        else if (typeof raw === "string") {
+          try {
+            const parsed = JSON.parse(raw);
+            stops = Array.isArray(parsed) ? parsed : [];
+          } catch {
+            stops = raw.split(",").map((s: string) => s.trim()).filter(Boolean);
+          }
+        }
+      }
+    } catch { stops = []; }
+    if (stops.length === 0) {
+      stops = ["Titik Kumpul / Keberangkatan", "Perjalanan Menuju Destinasi", "Tiba di Lokasi Utama", "Aktivitas Wisata", "Perjalanan Pulang"];
+    }
+    return stops;
+  };
+
+  // Helper: cek apakah laporan titik sudah mencapai titik akhir
+  const isTripAtLastStop = (trip: any) => {
+    const stops = getTripStops(trip);
+    const lastStop = stops[stops.length - 1];
+    const dest = trip.package?.destination;
+    return (
+      (trip.checkpoints && trip.checkpoints.length >= stops.length) ||
+      trip.currentLocation === lastStop ||
+      (dest && trip.currentLocation?.toLowerCase() === dest.toLowerCase())
+    );
+  };
+
+  const openAttendanceModal = async (trip: any, type: "DEPARTURE" | "RETURN", viewOnly = false) => {
+    if (type === "DEPARTURE" && !isDepartureDateReached(trip.scheduleDate) && !viewOnly) {
+      toast.error(`Absen Berangkat hanya dapat diakses pada hari keberangkatan (${formatDate(trip.scheduleDate)}).`);
+      return;
+    }
+    setAttendanceTrip(trip);
+    setAttendanceType(type);
+    setAttendanceViewOnly(viewOnly);
+
+    const participants = trip.booking?.participants || [];
+    const customer = trip.booking?.customer;
+    const defaultData = participants.map((p: any) => ({
+      customerId: trip.booking?.customerId || "",
+      participantName: p.name,
+      identityNumber: p.identityNumber || "-",
+      phone: p.phone || customer?.phone || "",
+      isPresent: false,
+      note: "",
+    }));
+    setAttendanceData(defaultData);
+
+    try {
+      const res = await fetch(`/api/trips/${trip.id}/attendance?type=${type}`);
+      const data = await res.json();
+      if (data.attendances && data.attendances.length > 0) {
+        setAttendanceData(defaultData.map((row: any) => {
+          const match = data.attendances.find((att: any) => att.participantName === row.participantName);
+          return match ? { ...row, isPresent: match.isPresent, note: match.note || "" } : row;
+        }));
+      }
+    } catch {
+      // fallback defaultData
+    }
+    setAttendanceModalOpen(true);
+  };
+
+  const handleSaveAttendance = async () => {
+    if (!attendanceTrip) return;
+    setSavingAttendance(true);
+    try {
+      const res = await fetch(`/api/trips/${attendanceTrip.id}/attendance`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ attendances: attendanceData, type: attendanceType }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(`Absensi ${attendanceType === "DEPARTURE" ? "keberangkatan" : "kepulangan"} berhasil disimpan!`);
+        setAttendanceModalOpen(false);
+        fetchTrips();
+      } else {
+        toast.error(data.error || "Gagal menyimpan absensi.");
+      }
+    } catch {
+      toast.error("Terjadi kesalahan sistem saat menyimpan absensi.");
+    } finally {
+      setSavingAttendance(false);
+    }
+  };
 
 
   const fetchTrips = async () => {
@@ -67,49 +199,67 @@ export default function TravelTripsPage() {
   };
 
   const handleStartTrip = async (tripId: string) => {
-    if (!confirm("Mulai perjalanan ini sekarang? Status perjalanan akan berubah menjadi Berjalan (ONGOING).")) return;
-    setStartingTripId(tripId);
-    try {
-      const res = await fetch(`/api/trips/${tripId}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "ONGOING" }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        toast.success(data.message || "Perjalanan resmi dimulai! 🚀");
-        fetchTrips();
-      } else {
-        toast.error(data.error || "Gagal memulai perjalanan.");
-      }
-    } catch {
-      toast.error("Terjadi kesalahan sistem saat memulai perjalanan.");
-    } finally {
-      setStartingTripId(null);
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: "Mulai Perjalanan Trip?",
+      message: "Mulai perjalanan ini sekarang?",
+      confirmText: "Ya, Mulai Perjalanan",
+      variant: "emerald",
+      onConfirm: async () => {
+        setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+        setStartingTripId(tripId);
+        try {
+          const res = await fetch(`/api/trips/${tripId}/status`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "ONGOING" }),
+          });
+          const data = await res.json();
+          if (res.ok) {
+            toast.success(data.message || "Perjalanan resmi dimulai! 🚀");
+            fetchTrips();
+          } else {
+            toast.error(data.error || "Gagal memulai perjalanan.");
+          }
+        } catch {
+          toast.error("Terjadi kesalahan sistem saat memulai perjalanan.");
+        } finally {
+          setStartingTripId(null);
+        }
+      },
+    });
   };
 
   const handleCompleteTrip = async (tripId: string) => {
-    if (!confirm("Selesaikan perjalanan ini? Seluruh rombongan akan ditandai selesai berwisata.")) return;
-    setCompletingTripId(tripId);
-    try {
-      const res = await fetch(`/api/trips/${tripId}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "COMPLETED" }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        toast.success(data.message || "Perjalanan telah berhasil diselesaikan! 🎉");
-        fetchTrips();
-      } else {
-        toast.error(data.error || "Gagal menyelesaikan perjalanan.");
-      }
-    } catch {
-      toast.error("Terjadi kesalahan sistem saat menyelesaikan perjalanan.");
-    } finally {
-      setCompletingTripId(null);
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: "Selesaikan Perjalanan Wisata?",
+      message: "Selesaikan perjalanan ini?",
+      confirmText: "Ya, Selesaikan Trip",
+      variant: "primary",
+      onConfirm: async () => {
+        setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+        setCompletingTripId(tripId);
+        try {
+          const res = await fetch(`/api/trips/${tripId}/status`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "COMPLETED" }),
+          });
+          const data = await res.json();
+          if (res.ok) {
+            toast.success(data.message || "Perjalanan telah berhasil diselesaikan! 🎉");
+            fetchTrips();
+          } else {
+            toast.error(data.error || "Gagal menyelesaikan perjalanan.");
+          }
+        } catch {
+          toast.error("Terjadi kesalahan sistem saat menyelesaikan perjalanan.");
+        } finally {
+          setCompletingTripId(null);
+        }
+      },
+    });
   };
 
   const openCheckpointModal = (trip: any) => {
@@ -424,65 +574,207 @@ export default function TravelTripsPage() {
                               </div>
 
                               <div className="flex flex-wrap items-center gap-2 self-start sm:self-center">
-                                {trip.status === "SCHEDULED" && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleStartTrip(trip.id)}
-                                    disabled={startingTripId === trip.id}
-                                    className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer disabled:opacity-60"
-                                  >
-                                    {startingTripId === trip.id ? (
-                                      <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
-                                    ) : (
-                                      <Play className="w-3.5 h-3.5 fill-current" />
-                                    )}
-                                    <span>Mulai Perjalanan</span>
-                                  </button>
-                                )}
+                                {(() => {
+                                  const hasCrew = (trip.assignments || []).some((a: any) =>
+                                    ["ACCEPTED", "ASSIGNED", "CONFIRMED"].includes(a.status)
+                                  );
+                                  const dateReached = isDepartureDateReached(trip.scheduleDate);
+                                  const atLastStop = isTripAtLastStop(trip);
 
-                                {trip.status === "ONGOING" && (
-                                  <>
-                                    <button
-                                      type="button"
-                                      onClick={() => openCheckpointModal(trip)}
-                                      className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
-                                    >
-                                      <Navigation className="w-3.5 h-3.5" />
-                                      <span>Lapor Titik</span>
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleCompleteTrip(trip.id)}
-                                      disabled={completingTripId === trip.id}
-                                      className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer disabled:opacity-60"
-                                    >
-                                      {completingTripId === trip.id ? (
-                                        <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
-                                      ) : (
-                                        <CheckCircle2 className="w-3.5 h-3.5" />
+                                  return (
+                                    <>
+                                      {/* ===== STATUS: SCHEDULED ===== */}
+                                      {trip.status === "SCHEDULED" && (
+                                        <>
+                                          {/* 1. Absen Berangkat: HANYA jika perjalanan mandiri tanpa kru */}
+                                          {!hasCrew && (
+                                            !dateReached ? (
+                                              <button
+                                                disabled
+                                                className="px-3.5 py-2 rounded-xl bg-slate-100 text-slate-400 border border-slate-200 text-xs font-bold flex items-center gap-1.5 cursor-not-allowed select-none opacity-75"
+                                                title="Absen Berangkat hanya dapat diakses pada hari keberangkatan"
+                                              >
+                                                <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                                <span>Absen Berangkat</span>
+                                              </button>
+                                            ) : !trip.departureAttendanceDone ? (
+                                              <button
+                                                type="button"
+                                                onClick={() => openAttendanceModal(trip, "DEPARTURE")}
+                                                className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                                                title="Wajib absen berangkat sebelum mulai perjalanan"
+                                              >
+                                                <UserCheck className="w-3.5 h-3.5" />
+                                                <span>Absen Berangkat</span>
+                                              </button>
+                                            ) : (
+                                              <button
+                                                type="button"
+                                                onClick={() => openAttendanceModal(trip, "DEPARTURE", true)}
+                                                className="px-3.5 py-2 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+                                                title="Klik untuk melihat data absensi keberangkatan"
+                                              >
+                                                <Check className="w-3.5 h-3.5 text-emerald-500" />
+                                                <span>Absen Berangkat Selesai</span>
+                                              </button>
+                                            )
+                                          )}
+
+                                          {/* 2. Mulai Perjalanan */}
+                                          {!hasCrew && !trip.departureAttendanceDone ? (
+                                            <button
+                                              disabled
+                                              className="px-3.5 py-2 rounded-xl bg-slate-100 text-slate-400 border border-slate-200 text-xs font-bold flex items-center gap-1.5 cursor-not-allowed select-none opacity-75"
+                                              title="Lakukan Absen Berangkat terlebih dahulu sebelum memulai perjalanan"
+                                            >
+                                              <Play className="w-3.5 h-3.5 text-slate-400" />
+                                              <span>Mulai Perjalanan</span>
+                                            </button>
+                                          ) : (
+                                            <button
+                                              type="button"
+                                              onClick={() => handleStartTrip(trip.id)}
+                                              disabled={startingTripId === trip.id}
+                                              className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer disabled:opacity-60"
+                                            >
+                                              {startingTripId === trip.id ? (
+                                                <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
+                                              ) : (
+                                                <Play className="w-3.5 h-3.5 fill-current" />
+                                              )}
+                                              <span>Mulai Perjalanan</span>
+                                            </button>
+                                          )}
+                                        </>
                                       )}
-                                      <span>Selesaikan Trip</span>
-                                    </button>
-                                  </>
-                                )}
 
-                                <Link
-                                  href={`/customer/trip-room/${trip.id}`}
-                                  className="px-3.5 py-2 rounded-xl bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 text-xs font-bold flex items-center gap-1.5 transition-colors"
-                                >
-                                  <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
-                                  <span>Buka Trip Room</span>
-                                </Link>
+                                      {/* ===== STATUS: ONGOING ===== */}
+                                      {trip.status === "ONGOING" && (
+                                        <>
+                                          {/* 1. Lapor Titik: jika belum tanggal berangkat, tidak bisa diklik dan diabu-abukan */}
+                                          {!dateReached ? (
+                                            <button
+                                              disabled
+                                              className="px-3.5 py-2 rounded-xl bg-slate-100 text-slate-400 border border-slate-200 text-xs font-bold flex items-center gap-1.5 cursor-not-allowed select-none opacity-75"
+                                              title="Laporan titik lokasi hanya dapat dilakukan mulai pada tanggal jadwal keberangkatan"
+                                            >
+                                              <Navigation className="w-3.5 h-3.5 text-slate-400" />
+                                              <span>Lapor Titik (Belum Jadwalnya)</span>
+                                            </button>
+                                          ) : (
+                                            <button
+                                              type="button"
+                                              onClick={() => openCheckpointModal(trip)}
+                                              className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                                            >
+                                              <Navigation className="w-3.5 h-3.5" />
+                                              <span>Lapor Titik</span>
+                                            </button>
+                                          )}
 
-                                {trip.status !== "COMPLETED" && (
-                                  <button
-                                    onClick={() => openAssignModal(trip)}
-                                    className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-emerald-600 text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-                                  >
-                                    <UserPlus className="w-3.5 h-3.5" />
-                                    <span>Tugaskan Kru (Opsional)</span>
-                                  </button>
-                                )}
+                                          {/* 2. Absen Pulang: HANYA jika perjalanan mandiri tanpa kru */}
+                                          {!hasCrew && (
+                                            !atLastStop ? (
+                                              <button
+                                                disabled
+                                                className="px-3.5 py-2 rounded-xl bg-slate-100 text-slate-400 border border-slate-200 text-xs font-bold flex items-center gap-1.5 cursor-not-allowed select-none opacity-75"
+                                                title="Absen Pulang hanya dapat dilakukan setelah rombongan tiba di titik rute terakhir"
+                                              >
+                                                <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                                <span>Absen Pulang</span>
+                                              </button>
+                                            ) : !trip.returnAttendanceDone ? (
+                                              <button
+                                                type="button"
+                                                onClick={() => openAttendanceModal(trip, "RETURN")}
+                                                className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                                                title="Klik untuk melakukan absensi kepulangan wisatawan di titik akhir"
+                                              >
+                                                <UserCheck className="w-3.5 h-3.5" />
+                                                <span>Absen Pulang</span>
+                                              </button>
+                                            ) : (
+                                              <button
+                                                type="button"
+                                                onClick={() => openAttendanceModal(trip, "RETURN", true)}
+                                                className="px-3.5 py-2 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+                                                title="Absen Pulang telah selesai. Klik untuk melihat data absensi"
+                                              >
+                                                <Check className="w-3.5 h-3.5 text-purple-600" />
+                                                <span>Absen Pulang Selesai</span>
+                                              </button>
+                                            )
+                                          )}
+
+                                          {/* 3. Selesaikan Trip: jika laporan titik belum di akhir maka tidak bisa diklik dan diabu-abukan */}
+                                          {!atLastStop ? (
+                                            <button
+                                              disabled
+                                              className="px-3.5 py-2 rounded-xl bg-slate-100 text-slate-400 border border-slate-200 text-xs font-bold flex items-center gap-1.5 cursor-not-allowed select-none opacity-75"
+                                              title="Perjalanan belum dapat diselesaikan. Laporan titik perjalanan belum mencapai titik akhir rute."
+                                            >
+                                              <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                              <span>Selesaikan Trip</span>
+                                            </button>
+                                          ) : !hasCrew && !trip.returnAttendanceDone ? (
+                                            <button
+                                              disabled
+                                              className="px-3.5 py-2 rounded-xl bg-slate-100 text-slate-400 border border-slate-200 text-xs font-bold flex items-center gap-1.5 cursor-not-allowed select-none opacity-75"
+                                              title="Perjalanan belum dapat diselesaikan. Lakukan Absen Pulang wisatawan di titik akhir terlebih dahulu."
+                                            >
+                                              <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                              <span>Selesaikan Trip</span>
+                                            </button>
+                                          ) : (
+                                            <button
+                                              type="button"
+                                              onClick={() => handleCompleteTrip(trip.id)}
+                                              disabled={completingTripId === trip.id}
+                                              className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer disabled:opacity-60"
+                                            >
+                                              {completingTripId === trip.id ? (
+                                                <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
+                                              ) : (
+                                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                              )}
+                                              <span>Selesaikan Trip</span>
+                                            </button>
+                                          )}
+                                        </>
+                                      )}
+
+                                      <Link
+                                        href={`/customer/trip-room/${trip.id}`}
+                                        className="px-3.5 py-2 rounded-xl bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 text-xs font-bold flex items-center gap-1.5 transition-colors"
+                                      >
+                                        <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+                                        <span>Buka Trip Room</span>
+                                      </Link>
+
+                                      {/* Tombol Tugaskan Kru (Opsional): jika perjalanan mandiri tanpa kru maka tidak bisa diklik dan diabu-abukan */}
+                                      {trip.status !== "COMPLETED" && (
+                                        !hasCrew ? (
+                                          <button
+                                            disabled
+                                            className="px-3.5 py-2 rounded-xl bg-slate-100 text-slate-400 border border-slate-200 text-xs font-bold flex items-center gap-1.5 cursor-not-allowed select-none opacity-75"
+                                            title="Perjalanan ini dijalankan secara mandiri tanpa kru (tidak menggunakan Tour Guide & Driver). Tombol penugasan kru dinonaktifkan."
+                                          >
+                                            <UserPlus className="w-3.5 h-3.5 text-slate-400" />
+                                            <span>Tugaskan Kru (Opsional)</span>
+                                          </button>
+                                        ) : (
+                                          <button
+                                            onClick={() => openAssignModal(trip)}
+                                            className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-emerald-600 text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                                          >
+                                            <UserPlus className="w-3.5 h-3.5" />
+                                            <span>Tugaskan Kru (Opsional)</span>
+                                          </button>
+                                        )
+                                      )}
+                                    </>
+                                  );
+                                })()}
                               </div>
                             </div>
 
@@ -543,14 +835,25 @@ export default function TravelTripsPage() {
 
                                   <div className="flex items-center gap-2 flex-wrap self-start sm:self-center">
                                     {trip.status === "ONGOING" && (
-                                      <button
-                                        type="button"
-                                        onClick={() => openCheckpointModal(trip)}
-                                        className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
-                                      >
-                                        <Navigation className="w-3.5 h-3.5" />
-                                        <span>Update Lokasi</span>
-                                      </button>
+                                      !isDepartureDateReached(trip.scheduleDate) ? (
+                                        <button
+                                          disabled
+                                          className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-400 border border-slate-200 text-xs font-bold flex items-center gap-1.5 cursor-not-allowed select-none opacity-75"
+                                          title="Laporan titik lokasi hanya dapat dilakukan mulai pada tanggal jadwal keberangkatan"
+                                        >
+                                          <Navigation className="w-3.5 h-3.5 text-slate-400" />
+                                          <span>Update Lokasi (Belum Jadwalnya)</span>
+                                        </button>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          onClick={() => openCheckpointModal(trip)}
+                                          className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                                        >
+                                          <Navigation className="w-3.5 h-3.5" />
+                                          <span>Update Lokasi</span>
+                                        </button>
+                                      )
                                     )}
                                     {trip.checkpoints && trip.checkpoints.length > 0 && (
                                       <button
@@ -727,17 +1030,24 @@ export default function TravelTripsPage() {
                                   <div className="space-y-0.5">
                                     <p className="font-bold text-slate-800">Perjalanan Mandiri (Tanpa Kru)</p>
                                     <p className="text-[11px] text-slate-500">
-                                      Penugasan Tour Guide &amp; Driver bersifat opsional. Anda tidak diwajibkan menugaskan kru dan perjalanan tetap dapat dijalankan sesuai jadwal tanggal keberangkatan.
+                                      Perjalanan ini dijalankan secara mandiri tanpa Tour Guide &amp; Driver. Absen berangkat dan absen pulang dikelola langsung oleh pihak travel.
                                     </p>
                                   </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => openAssignModal(trip)}
-                                    className="px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 font-bold text-xs flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer"
-                                  >
-                                    <UserPlus className="w-3.5 h-3.5 text-emerald-600" />
-                                    <span>Tugaskan Kru (Opsional)</span>
-                                  </button>
+                                  {trip.status === "SCHEDULED" ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => openAssignModal(trip)}
+                                      className="px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 font-bold text-xs flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer"
+                                      title="Beralih ke penugasan Tour Guide & Driver"
+                                    >
+                                      <UserPlus className="w-3.5 h-3.5 text-emerald-600" />
+                                      <span>Tugaskan Kru Baru</span>
+                                    </button>
+                                  ) : (
+                                    <span className="text-[11px] text-slate-400 italic">
+                                      Perjalanan sedang berlangsung secara mandiri tanpa kru
+                                    </span>
+                                  )}
                                 </div>
                               )}
                             </div>
@@ -778,7 +1088,7 @@ export default function TravelTripsPage() {
             </div>
 
             <p className="text-xs text-slate-500">
-              Laporkan titik lokasi rombongan saat ini agar terpantau pada linimasa live tracking wisatawan.
+              Laporkan titik lokasi rombongan saat ini.
             </p>
 
             {/* Quick-pick predefined routes if available */}
@@ -793,26 +1103,45 @@ export default function TravelTripsPage() {
                 stops = [];
               }
               if (stops.length > 0) {
+                const reportedLocs = (activeCheckpointTrip.checkpoints || []).map((cp: any) => cp.location?.trim().toLowerCase());
+                const currLoc = activeCheckpointTrip.currentLocation?.trim().toLowerCase();
+
+                let highestReportedIndex = -1;
+                stops.forEach((s: string, idx: number) => {
+                  const sNorm = s.trim().toLowerCase();
+                  if (reportedLocs.includes(sNorm) || currLoc === sNorm) {
+                    if (idx > highestReportedIndex) highestReportedIndex = idx;
+                  }
+                });
+
                 return (
                   <div className="space-y-1.5">
                     <label className="block text-[11px] font-bold text-slate-600">
                       Pilih dari Rencana Rute:
                     </label>
                     <div className="flex flex-wrap gap-1.5">
-                      {stops.map((stop: string, i: number) => (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => setCheckpointLocation(stop)}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${
-                            checkpointLocation === stop
-                              ? "bg-emerald-600 text-white border-emerald-600"
-                              : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
-                          }`}
-                        >
-                          {i + 1}. {stop}
-                        </button>
-                      ))}
+                      {stops.map((stop: string, i: number) => {
+                        const sNorm = stop.trim().toLowerCase();
+                        const isDone = reportedLocs.includes(sNorm) || i <= highestReportedIndex;
+
+                        return (
+                          <button
+                            key={i}
+                            type="button"
+                            disabled={isDone}
+                            onClick={() => !isDone && setCheckpointLocation(stop)}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${isDone
+                              ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60 select-none"
+                              : checkpointLocation === stop
+                                ? "bg-emerald-600 text-white border-emerald-600 cursor-pointer"
+                                : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200 cursor-pointer"
+                              }`}
+                            title={isDone ? `${stop} sudah dilaporkan (selesai)` : `Pilih ${stop}`}
+                          >
+                            {isDone ? `✓ ${i + 1}. ${stop} (Selesai)` : `${i + 1}. ${stop}`}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 );
@@ -941,6 +1270,122 @@ export default function TravelTripsPage() {
           onSuccess={() => fetchTrips()}
         />
       )}
+
+      {/* Attendance Modal (Untuk Perjalanan Mandiri Tanpa Kru) */}
+      {attendanceModalOpen && attendanceTrip && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl border border-slate-200 p-6 max-w-lg w-full shadow-2xl animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <div className="flex items-center gap-2 font-extrabold text-slate-900 text-base">
+                <UserCheck className={`w-5 h-5 ${attendanceType === "DEPARTURE" ? "text-blue-600" : "text-purple-600"}`} />
+                <span>Absensi {attendanceType === "DEPARTURE" ? "Keberangkatan" : "Kepulangan"} (Perjalanan Mandiri)</span>
+              </div>
+              <button
+                onClick={() => setAttendanceModalOpen(false)}
+                className="p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mb-4 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700">
+              <div className="font-bold text-slate-900">{attendanceTrip.package?.name}</div>
+              {attendanceViewOnly ? (
+                <div className="text-slate-500 mt-0.5 flex items-center gap-1">
+                  <span>Data absensi {attendanceType === "DEPARTURE" ? "keberangkatan" : "kepulangan"} peserta perjalanan mandiri.</span>
+                </div>
+              ) : (
+                <div className="text-slate-500 mt-0.5">
+                  Centang peserta yang {attendanceType === "DEPARTURE" ? "hadir saat keberangkatan" : "hadir saat kepulangan"}.
+                </div>
+              )}
+            </div>
+
+            {attendanceData.length === 0 ? (
+              <div className="text-center py-6 text-xs text-slate-400">
+                <Users className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                <p>Tidak ada data peserta untuk dihadiri.</p>
+                <p className="text-[11px] mt-1">Data absensi dibuat berdasarkan manifest booking.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {attendanceData.map((att: any, idx: number) => (
+                  <div key={idx} className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50">
+                    <div className="flex-1 pr-2">
+                      <div className="text-xs font-bold text-slate-900">{att.participantName}</div>
+                      <div className="text-[11px] font-mono text-slate-500">ID: {att.identityNumber}</div>
+                      {att.phone && (
+                        <a
+                          href={formatWhatsAppUrl(att.phone, `Halo ${att.participantName}, konfirmasi kehadiran untuk trip ${attendanceTrip.package?.name}.`)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[10px] text-emerald-700 font-bold mt-0.5 hover:underline"
+                        >
+                          <MessageCircle className="w-3 h-3" />
+                          <span>{att.phone}</span>
+                        </a>
+                      )}
+                    </div>
+                    <label className={`flex items-center gap-2 ${attendanceViewOnly ? "cursor-default" : "cursor-pointer"}`}>
+                      <span className="text-[11px] text-slate-600 font-medium">{att.isPresent ? "Hadir" : "Tidak Hadir"}</span>
+                      <div className="relative">
+                        <input
+                          type="checkbox"
+                          checked={att.isPresent}
+                          onChange={(e) => {
+                            if (attendanceViewOnly) return;
+                            const updated = [...attendanceData];
+                            updated[idx] = { ...updated[idx], isPresent: e.target.checked };
+                            setAttendanceData(updated);
+                          }}
+                          disabled={attendanceViewOnly}
+                          className="sr-only"
+                        />
+                        <div className={`w-10 h-6 rounded-full transition-colors ${att.isPresent ? "bg-emerald-500" : "bg-slate-300"} ${attendanceViewOnly ? "opacity-70" : ""}`}>
+                          <div className={`w-4 h-4 rounded-full bg-white shadow-xs absolute top-1 transition-all ${att.isPresent ? "left-5" : "left-1"}`} />
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-2 mt-5 pt-4 border-t border-slate-100">
+              <button
+                onClick={() => setAttendanceModalOpen(false)}
+                className="flex-1 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                {attendanceViewOnly ? "Tutup" : "Batal"}
+              </button>
+              {!attendanceViewOnly && (
+                <button
+                  onClick={handleSaveAttendance}
+                  disabled={savingAttendance || attendanceData.length === 0}
+                  className={`flex-1 py-2 rounded-xl text-white text-xs font-bold shadow-xs transition-all disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 cursor-pointer ${attendanceType === "DEPARTURE" ? "bg-blue-600 hover:bg-blue-700" : "bg-purple-600 hover:bg-purple-700"}`}
+                >
+                  {savingAttendance && (
+                    <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
+                  )}
+                  <span>{savingAttendance ? "Menyimpan..." : "Simpan Absensi"}</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmText={confirmDialog.confirmText}
+        variant={confirmDialog.variant}
+        loading={Boolean(startingTripId || completingTripId)}
+      />
 
     </div>
   );

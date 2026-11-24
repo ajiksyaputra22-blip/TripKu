@@ -36,6 +36,7 @@ import {
 import UnifiedAssignCrewModal from "@/components/UnifiedAssignCrewModal";
 import { useToast } from "@/components/Toast";
 import NegotiationChatModal from "@/components/NegotiationChatModal";
+import ConfirmDialog, { ConfirmVariant } from "@/components/ConfirmDialog";
 
 const TABS = [
   { id: "manifest", label: "Data Wisatawan & Pemesan", icon: Users },
@@ -98,6 +99,23 @@ export default function TravelPackageDetailPage({ packageId: propPackageId, onBa
   const [startingTripId, setStartingTripId] = useState<string | null>(null);
   const [completingTripId, setCompletingTripId] = useState<string | null>(null);
 
+  // Custom confirmation dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText: string;
+    variant: ConfirmVariant;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    confirmText: "Konfirmasi",
+    variant: "emerald",
+    onConfirm: () => {},
+  });
+
   // Checkpoint modal state
   const [checkpointModalOpen, setCheckpointModalOpen] = useState(false);
   const [checkpointLocation, setCheckpointLocation] = useState("");
@@ -105,49 +123,67 @@ export default function TravelPackageDetailPage({ packageId: propPackageId, onBa
   const [submittingCheckpoint, setSubmittingCheckpoint] = useState(false);
 
   const handleStartTrip = async (tripId: string) => {
-    if (!confirm("Mulai perjalanan untuk rombongan ini sekarang? Status trip akan berubah menjadi Berjalan (ONGOING).")) return;
-    setStartingTripId(tripId);
-    try {
-      const res = await fetch(`/api/trips/${tripId}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "ONGOING" }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        toast.success(data.message || "Perjalanan resmi dimulai! 🚀");
-        fetchPackage();
-      } else {
-        toast.error(data.error || "Gagal memulai perjalanan.");
-      }
-    } catch {
-      toast.error("Terjadi kesalahan sistem saat memulai perjalanan.");
-    } finally {
-      setStartingTripId(null);
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: "Mulai Perjalanan Trip?",
+      message: "Mulai perjalanan untuk rombongan ini sekarang? Status trip akan berubah menjadi Berjalan (ONGOING) dan sistem akan otomatis mengirim notifikasi ke pelanggan bahwa perjalanan wisata telah aktif dan resmi dimulai.",
+      confirmText: "Ya, Mulai Perjalanan",
+      variant: "emerald",
+      onConfirm: async () => {
+        setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+        setStartingTripId(tripId);
+        try {
+          const res = await fetch(`/api/trips/${tripId}/status`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "ONGOING" }),
+          });
+          const data = await res.json();
+          if (res.ok) {
+            toast.success(data.message || "Perjalanan resmi dimulai! 🚀");
+            fetchPackage();
+          } else {
+            toast.error(data.error || "Gagal memulai perjalanan.");
+          }
+        } catch {
+          toast.error("Terjadi kesalahan sistem saat memulai perjalanan.");
+        } finally {
+          setStartingTripId(null);
+        }
+      },
+    });
   };
 
   const handleCompleteTrip = async (tripId: string) => {
-    if (!confirm("Selesaikan perjalanan ini? Seluruh rombongan akan ditandai selesai berwisata.")) return;
-    setCompletingTripId(tripId);
-    try {
-      const res = await fetch(`/api/trips/${tripId}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "COMPLETED" }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        toast.success(data.message || "Perjalanan telah berhasil diselesaikan! 🎉");
-        fetchPackage();
-      } else {
-        toast.error(data.error || "Gagal menyelesaikan perjalanan.");
-      }
-    } catch {
-      toast.error("Terjadi kesalahan sistem saat menyelesaikan perjalanan.");
-    } finally {
-      setCompletingTripId(null);
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: "Selesaikan Perjalanan Wisata?",
+      message: "Selesaikan perjalanan ini? Seluruh rombongan akan ditandai selesai berwisata dan sistem akan mengirimkan notifikasi terima kasih kepada pelanggan.",
+      confirmText: "Ya, Selesaikan Trip",
+      variant: "primary",
+      onConfirm: async () => {
+        setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+        setCompletingTripId(tripId);
+        try {
+          const res = await fetch(`/api/trips/${tripId}/status`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "COMPLETED" }),
+          });
+          const data = await res.json();
+          if (res.ok) {
+            toast.success(data.message || "Perjalanan telah berhasil diselesaikan! 🎉");
+            fetchPackage();
+          } else {
+            toast.error(data.error || "Gagal menyelesaikan perjalanan.");
+          }
+        } catch {
+          toast.error("Terjadi kesalahan sistem saat menyelesaikan perjalanan.");
+        } finally {
+          setCompletingTripId(null);
+        }
+      },
+    });
   };
 
   const handleSubmitCheckpoint = async (tripId: string) => {
@@ -594,13 +630,38 @@ export default function TravelPackageDetailPage({ packageId: propPackageId, onBa
               {/* Status Badge */}
               <div className="shrink-0 self-start sm:self-auto">
                 {(() => {
-                  const isCompleted = pkg.status === "COMPLETED" || (pkg.quotaLeft !== undefined && pkg.quotaLeft <= 0) || (pkg.trips && pkg.trips.length > 0 && pkg.trips.every((t: any) => t.status === "COMPLETED"));
-                  const isInactive = !isCompleted && pkg.status === "INACTIVE";
+                  const isPrivate = pkg.tripType === "PRIVATE";
+
+                  // 1. Khusus PRIVATE TRIP: Selalu aktif melayani pesanan setiap hari (kecuali travel sengaja mengubah status ke INACTIVE)
+                  if (isPrivate) {
+                    if (pkg.status === "INACTIVE") {
+                      return <span className="px-3 py-1 rounded-full text-xs font-bold bg-rose-600 text-white shadow-xs">STATUS: NONAKTIF</span>;
+                    }
+                    return <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500 text-white shadow-xs">STATUS: AKTIF</span>;
+                  }
+
+                  // 2. Khusus OPEN TRIP:
+                  // Periksa apakah masih ada perjalanan yang aktif (SCHEDULED atau ONGOING)
+                  const hasActiveTrips = pkg.trips && pkg.trips.length > 0 && pkg.trips.some((t: any) => t.status === "SCHEDULED" || t.status === "ONGOING");
+                  // Periksa apakah masih ada booking aktif yang belum selesai/dibatalkan
+                  const hasActiveBookings = pkg.bookings && pkg.bookings.length > 0 && pkg.bookings.some((b: any) => b.status === "CONFIRMED" || b.status === "PAID" || b.status === "WAITING_CONFIRMATION" || b.status === "DP_PAID");
+
+                  // Jika masih ada perjalanan berjalan atau ada customer aktif, paket TIDAK boleh berstatus SELESAI
+                  if (hasActiveTrips || hasActiveBookings) {
+                    if (pkg.status === "INACTIVE") {
+                      return <span className="px-3 py-1 rounded-full text-xs font-bold bg-rose-600 text-white shadow-xs">STATUS: NONAKTIF</span>;
+                    }
+                    return <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500 text-white shadow-xs">STATUS: AKTIF</span>;
+                  }
+
+                  // Hanya jika seluruh trip sudah COMPLETED dan tidak ada customer/trip aktif lagi
+                  const allTripsCompleted = pkg.trips && pkg.trips.length > 0 && pkg.trips.every((t: any) => t.status === "COMPLETED");
+                  const isCompleted = pkg.status === "COMPLETED" || allTripsCompleted;
 
                   if (isCompleted) {
                     return <span className="px-3 py-1 rounded-full text-xs font-bold bg-slate-700 text-white shadow-xs">STATUS: SELESAI</span>;
                   }
-                  if (isInactive) {
+                  if (pkg.status === "INACTIVE") {
                     return <span className="px-3 py-1 rounded-full text-xs font-bold bg-rose-600 text-white shadow-xs">STATUS: NONAKTIF</span>;
                   }
                   return <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500 text-white shadow-xs">STATUS: AKTIF</span>;
@@ -738,7 +799,7 @@ export default function TravelPackageDetailPage({ packageId: propPackageId, onBa
               <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
                 <div className="p-4 bg-slate-50/80 border-b border-slate-200 flex items-center justify-between">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                    Manifest Rombongan: Seluruh Data Wisatawan & No. WhatsApp
+                    Data Wisatawan
                   </h3>
                   <span className="text-[11px] text-slate-500 font-medium">
                     Total {allTourists.length} dari kapasitas {pkg.capacity} orang
@@ -988,35 +1049,97 @@ export default function TravelPackageDetailPage({ packageId: propPackageId, onBa
                         </button>
                       )}
 
-                      {primaryTrip.status === "ONGOING" && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setCheckpointLocation("");
-                              setCheckpointNote("");
-                              setCheckpointModalOpen(true);
-                            }}
-                            className="px-3.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
-                          >
-                            <Navigation className="w-3.5 h-3.5" />
-                            <span>Lapor Titik Lokasi</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleCompleteTrip(primaryTrip.id)}
-                            disabled={completingTripId === primaryTrip.id}
-                            className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer disabled:opacity-60"
-                          >
-                            {completingTripId === primaryTrip.id ? (
-                              <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
+                      {primaryTrip.status === "ONGOING" && (() => {
+                        const dateReached = (() => {
+                          if (!primaryTrip.scheduleDate) return true;
+                          const now = new Date();
+                          const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+                          const tripDate = new Date(primaryTrip.scheduleDate);
+                          const tripStart = new Date(tripDate.getFullYear(), tripDate.getMonth(), tripDate.getDate()).getTime();
+                          return todayStart >= tripStart;
+                        })();
+
+                        const atLastStop = (() => {
+                          let stops: string[] = [];
+                          try {
+                            const raw = pkg?.checkpointRoute || primaryTrip?.package?.checkpointRoute;
+                            if (raw) {
+                              if (Array.isArray(raw)) stops = raw;
+                              else if (typeof raw === "string") {
+                                try {
+                                  const parsed = JSON.parse(raw);
+                                  stops = Array.isArray(parsed) ? parsed : [];
+                                } catch {
+                                  stops = raw.split(",").map((s: string) => s.trim()).filter(Boolean);
+                                }
+                              }
+                            }
+                          } catch { stops = []; }
+                          if (stops.length === 0) {
+                            stops = ["Titik Kumpul / Keberangkatan", "Perjalanan Menuju Destinasi", "Tiba di Lokasi Utama", "Aktivitas Wisata", "Perjalanan Pulang"];
+                          }
+                          const lastStop = stops[stops.length - 1];
+                          const dest = pkg?.destination || primaryTrip?.package?.destination;
+                          return (
+                            (primaryTrip?.checkpoints && primaryTrip.checkpoints.length >= stops.length) ||
+                            primaryTrip?.currentLocation === lastStop ||
+                            (dest && primaryTrip?.currentLocation?.toLowerCase() === dest.toLowerCase())
+                          );
+                        })();
+
+                        return (
+                          <>
+                            {!dateReached ? (
+                              <button
+                                disabled
+                                className="px-3.5 py-1.5 rounded-xl bg-slate-100 text-slate-400 border border-slate-200 text-xs font-bold flex items-center gap-1.5 cursor-not-allowed select-none opacity-75"
+                                title="Laporan titik lokasi hanya dapat dilakukan mulai pada tanggal jadwal keberangkatan"
+                              >
+                                <Navigation className="w-3.5 h-3.5 text-slate-400" />
+                                <span>Lapor Titik Lokasi (Belum Jadwalnya)</span>
+                              </button>
                             ) : (
-                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCheckpointLocation("");
+                                  setCheckpointNote("");
+                                  setCheckpointModalOpen(true);
+                                }}
+                                className="px-3.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                              >
+                                <Navigation className="w-3.5 h-3.5" />
+                                <span>Lapor Titik Lokasi</span>
+                              </button>
                             )}
-                            <span>Selesaikan Perjalanan</span>
-                          </button>
-                        </>
-                      )}
+
+                            {!atLastStop ? (
+                              <button
+                                disabled
+                                className="px-3.5 py-1.5 rounded-xl bg-slate-100 text-slate-400 border border-slate-200 text-xs font-bold flex items-center gap-1.5 cursor-not-allowed select-none opacity-75"
+                                title="Perjalanan belum dapat diselesaikan. Laporkan seluruh titik rute perjalanan terlebih dahulu."
+                              >
+                                <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                <span>Selesaikan Perjalanan (Lapor Titik Dulu)</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleCompleteTrip(primaryTrip.id)}
+                                disabled={completingTripId === primaryTrip.id}
+                                className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer disabled:opacity-60"
+                              >
+                                {completingTripId === primaryTrip.id ? (
+                                  <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
+                                ) : (
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                )}
+                                <span>Selesaikan Perjalanan</span>
+                              </button>
+                            )}
+                          </>
+                        );
+                      })()}
 
                       <Link
                         href={`/customer/trip-room/${primaryTrip.id}`}
@@ -1241,7 +1364,7 @@ export default function TravelPackageDetailPage({ packageId: propPackageId, onBa
                 return (
                   <div className="p-10 text-center bg-white rounded-3xl border border-slate-200 text-slate-400 text-xs space-y-3">
                     <Users className="w-10 h-10 mx-auto text-slate-300" />
-                    <p className="font-bold text-slate-700 text-sm">Belum Ada Kru yang Ditugaskan (Opsional)</p>
+                    <p className="font-bold text-slate-700 text-sm">Belum Ada Kru yang Ditugaskan</p>
                     <p className="max-w-md mx-auto text-slate-500">
                       Penugasan kru bersifat opsional. Anda dapat langsung menjalankan perjalanan rombongan secara mandiri tanpa Tour Guide dan Driver, atau klik tombol di bawah jika ingin menugaskan kru.
                     </p>
@@ -1251,7 +1374,7 @@ export default function TravelPackageDetailPage({ packageId: propPackageId, onBa
                       className="mt-2 px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs inline-flex items-center gap-2 cursor-pointer shadow-xs"
                     >
                       <UserPlus className="w-4 h-4 text-emerald-400" />
-                      <span>Tugaskan Tour Guide &amp; Driver (Opsional)</span>
+                      <span>Tugaskan Tour Guide &amp; Driver</span>
                     </button>
                   </div>
                 );
@@ -1272,7 +1395,7 @@ export default function TravelPackageDetailPage({ packageId: propPackageId, onBa
                           {role === "GUIDE" ? "Tour Guide (Pemandu Wisata)" : "Driver Wisata (Armada)"}
                         </h4>
                         <span className="inline-block mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-600">
-                          Belum Ditugaskan (Opsional)
+                          Belum Ditugaskan
                         </span>
                         <p className="text-xs text-slate-500 mt-2 max-w-xs">
                           {role === "GUIDE"
@@ -1286,7 +1409,7 @@ export default function TravelPackageDetailPage({ packageId: propPackageId, onBa
                         className="mt-1 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
                       >
                         <UserPlus className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>Tugaskan {role === "GUIDE" ? "Tour Guide" : "Driver"} (Opsional)</span>
+                        <span>Tugaskan {role === "GUIDE" ? "Tour Guide" : "Driver"}</span>
                       </button>
                     </div>
                   );
@@ -1487,9 +1610,6 @@ export default function TravelPackageDetailPage({ packageId: propPackageId, onBa
                 <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 text-xs text-slate-400 space-y-2">
                   <Users className="w-8 h-8 text-slate-300 mx-auto" />
                   <p className="font-semibold text-slate-600">Belum ada kru yang melamar ke paket wisata ini.</p>
-                  <p className="max-w-md mx-auto text-[11px]">
-                    Paket wisata yang berstatus AKTIF akan otomatis muncul di Bursa Lowongan Tour Guide &amp; Driver sesuai kesesuaian domisili.
-                  </p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1904,7 +2024,7 @@ export default function TravelPackageDetailPage({ packageId: propPackageId, onBa
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Catatan Negosiasi (Opsional)</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Catatan Negosiasi</label>
               <textarea
                 rows={2}
                 value={travelCounterNote}
@@ -1970,26 +2090,45 @@ export default function TravelPackageDetailPage({ packageId: propPackageId, onBa
                 stops = [];
               }
               if (stops.length > 0) {
+                const reportedLocs = (primaryTrip?.checkpoints || []).map((cp: any) => cp.location?.trim().toLowerCase());
+                const currLoc = primaryTrip?.currentLocation?.trim().toLowerCase();
+
+                let highestReportedIndex = -1;
+                stops.forEach((s: string, idx: number) => {
+                  const sNorm = s.trim().toLowerCase();
+                  if (reportedLocs.includes(sNorm) || currLoc === sNorm) {
+                    if (idx > highestReportedIndex) highestReportedIndex = idx;
+                  }
+                });
+
                 return (
                   <div className="space-y-1.5">
                     <label className="block text-[11px] font-bold text-slate-600">
                       Pilih dari Rencana Rute:
                     </label>
                     <div className="flex flex-wrap gap-1.5">
-                      {stops.map((stop: string, i: number) => (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => setCheckpointLocation(stop)}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
-                            checkpointLocation === stop
-                              ? "bg-emerald-600 text-white border-emerald-600"
-                              : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
-                          }`}
-                        >
-                          {i + 1}. {stop}
-                        </button>
-                      ))}
+                      {stops.map((stop: string, i: number) => {
+                        const sNorm = stop.trim().toLowerCase();
+                        const isDone = reportedLocs.includes(sNorm) || i <= highestReportedIndex;
+
+                        return (
+                          <button
+                            key={i}
+                            type="button"
+                            disabled={isDone}
+                            onClick={() => !isDone && setCheckpointLocation(stop)}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${isDone
+                              ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60 select-none"
+                              : checkpointLocation === stop
+                                ? "bg-emerald-600 text-white border-emerald-600 cursor-pointer"
+                                : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200 cursor-pointer"
+                              }`}
+                            title={isDone ? `${stop} sudah dilaporkan (selesai)` : `Pilih ${stop}`}
+                          >
+                            {isDone ? `✓ ${i + 1}. ${stop} (Selesai)` : `${i + 1}. ${stop}`}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 );
@@ -2074,6 +2213,18 @@ export default function TravelPackageDetailPage({ packageId: propPackageId, onBa
           onFeeUpdated={fetchPackage}
         />
       )}
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmText={confirmDialog.confirmText}
+        variant={confirmDialog.variant}
+        loading={Boolean(startingTripId || completingTripId)}
+      />
     </div>
   );
 }
