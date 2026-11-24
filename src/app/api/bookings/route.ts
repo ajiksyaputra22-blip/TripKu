@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { createNotification } from "@/lib/notifications";
+import { calculatePaymentDeadline, cancelExpiredBookings } from "@/lib/booking-expiration";
 
 export async function GET(request: Request) {
   try {
@@ -10,12 +11,33 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Silakan login terlebih dahulu." }, { status: 401 });
     }
 
+    // Jalankan pembatalan otomatis untuk pesanan yang telah melewati batas 45 menit
+    await cancelExpiredBookings();
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
 
     const whereClause: any = {};
     if (status && status !== "ALL") {
-      whereClause.status = status;
+      if (status === "WAITING_PAYMENT") {
+        whereClause.status = {
+          in: ["WAITING_PAYMENT", "WAITING_DP_PAYMENT", "NEEDS_PELUNASAN", "PENDING", "UNPAID"],
+        };
+      } else if (status === "WAITING_VERIFICATION") {
+        whereClause.status = "WAITING_VERIFICATION";
+      } else if (status === "CONFIRMED") {
+        whereClause.status = {
+          in: ["CONFIRMED", "PAID", "ACTIVE"],
+        };
+      } else if (status === "COMPLETED") {
+        whereClause.status = "COMPLETED";
+      } else if (status === "CANCELLED") {
+        whereClause.status = {
+          in: ["CANCELLED", "REJECTED"],
+        };
+      } else {
+        whereClause.status = status;
+      }
     }
 
     if (session.role === "CUSTOMER") {
@@ -295,6 +317,10 @@ export async function POST(request: Request) {
     const isDPChosen = (paymentPlan === "DP" || !paymentPlan) && dpPercentage > 0;
     const dpAmount = isDPChosen ? Math.ceil(totalPrice * dpPercentage / 100) : 0;
 
+    // Tetapkan batas waktu pembayaran 45 menit sejak customer menekan tombol Konfirmasi & Lanjut Pembayaran
+    const paymentStartedAt = new Date();
+    const paymentDeadline = calculatePaymentDeadline(paymentStartedAt);
+
     const newBooking = await (prisma.booking as any).create({
       data: {
         bookingCode,
@@ -309,6 +335,8 @@ export async function POST(request: Request) {
         dpPaid: false,
         notes,
         selectedDate: isPrivateTrip && selectedDate ? new Date(selectedDate) : null,
+        paymentStartedAt,
+        paymentDeadline,
         // If customer chose DP and package allows DP, set WAITING_DP_PAYMENT; otherwise WAITING_PAYMENT
         status: isDPChosen ? "WAITING_DP_PAYMENT" : "WAITING_PAYMENT",
         participants: {

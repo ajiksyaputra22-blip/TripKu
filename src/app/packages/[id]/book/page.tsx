@@ -700,7 +700,7 @@ export default function BookingPage() {
 
                         <div>
                           <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                            Nomor HP Pribadi / WhatsApp {idx === 0 ? "(Customer Utama) *" : "(Opsional)"}
+                            Nomor HP Pribadi {idx === 0 ? "(Customer Utama) *" : "(Opsional)"}
                           </label>
                           <input
                             type="tel"
@@ -732,7 +732,7 @@ export default function BookingPage() {
 
                         <div>
                           <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                            Tanggal Lahir
+                            Tanggal Lahir *
                           </label>
                           <input
                             type="date"
@@ -744,7 +744,7 @@ export default function BookingPage() {
 
                         <div>
                           <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                            Kontak Darurat (HP & Hubungan)
+                            Kontak Darurat (HP & Hubungan) *
                           </label>
                           <input
                             type="text"
@@ -818,7 +818,7 @@ export default function BookingPage() {
                         <div className="mt-3 p-2.5 rounded-lg bg-amber-50 border border-amber-200/80 text-[10px] text-amber-900 leading-snug flex items-start gap-1.5">
                           <Clock className="w-3.5 h-3.5 text-amber-700 shrink-0 mt-0.5" />
                           <span>
-                            <strong>Wajib Lunas H-2:</strong> Sisa pelunasan wajib dibayarkan maksimal 2 hari sebelum tanggal keberangkatan{pkg.departureDate && ` (${formatDate(new Date(new Date(pkg.departureDate).getTime() - 2 * 24 * 60 * 60 * 1000))})`}. Sistem tetap memproses verifikasi dan kru dapat dipersiapkan.
+                            <strong>Wajib Lunas H-2</strong>
                           </span>
                         </div>
                       </div>
@@ -844,9 +844,6 @@ export default function BookingPage() {
                               Langsung Pelunasan (100%)
                             </span>
                           </div>
-                          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
-                            Lunas Langsung
-                          </span>
                         </div>
 
                         <div className="space-y-1 text-xs">
@@ -858,14 +855,14 @@ export default function BookingPage() {
                           </div>
                           <div className="flex justify-between items-baseline pt-1 border-t border-slate-100">
                             <span className="text-slate-500 text-[11px]">Sisa Tagihan Nanti:</span>
-                            <span className="font-semibold text-emerald-600">Rp 0 (Lunas Bebas Tagihan)</span>
+                            <span className="font-semibold text-emerald-600">Rp 0</span>
                           </div>
                         </div>
 
                         <div className="mt-3 p-2.5 rounded-lg bg-emerald-50 border border-emerald-200/80 text-[10px] text-emerald-900 leading-snug flex items-start gap-1.5">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 shrink-0 mt-0.5" />
                           <span>
-                            <strong>Langsung Selesai:</strong> Tidak perlu mengingat jadwal pelunasan berikutnya. Pembayaran langsung lunas 100% saat transfer.
+                            <strong>Langsung Selesai</strong>
                           </span>
                         </div>
                       </div>
@@ -1079,11 +1076,6 @@ export default function BookingPage() {
                     </p>
                   </div>
                 )}
-              </div>
-
-              {/* Info notice */}
-              <div className="mt-4 p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 leading-relaxed">
-                Setelah konfirmasi, Anda akan diarahkan ke halaman instruksi transfer bank dan upload bukti foto pembayaran.
               </div>
             </div>
           </div>

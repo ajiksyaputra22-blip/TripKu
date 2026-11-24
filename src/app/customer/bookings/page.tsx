@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { formatRupiah, formatDate, getStatusBadge } from "@/lib/utils";
-import { Calendar, ArrowRight, MapPin, MessageSquare, CheckCircle2 } from "lucide-react";
+import { Calendar, ArrowRight, MapPin, MessageSquare, CheckCircle2, Clock } from "lucide-react";
 
 export default function CustomerBookingsPage() {
   const [bookings, setBookings] = useState<any[]>([]);
@@ -77,7 +77,7 @@ export default function CustomerBookingsPage() {
 
         {/* Filter Tabs */}
         <div className="flex flex-wrap gap-2 mb-6">
-          {["ALL", "WAITING_PAYMENT", "WAITING_VERIFICATION", "CONFIRMED", "COMPLETED"].map((st) => (
+          {["ALL", "WAITING_PAYMENT", "WAITING_VERIFICATION", "CONFIRMED", "COMPLETED", "CANCELLED"].map((st) => (
             <button
               key={st}
               onClick={() => setStatusFilter(st)}
@@ -90,7 +90,8 @@ export default function CustomerBookingsPage() {
               {st === "ALL" ? "Semua Status" :
                st === "WAITING_PAYMENT" ? "Menunggu Bayar" :
                st === "WAITING_VERIFICATION" ? "Menunggu Verifikasi" :
-               st === "CONFIRMED" ? "Terkonfirmasi" : "Selesai"}
+               st === "CONFIRMED" ? "Terkonfirmasi" :
+               st === "COMPLETED" ? "Selesai" : "Dibatalkan"}
             </button>
           ))}
         </div>
@@ -120,13 +121,19 @@ export default function CustomerBookingsPage() {
                       className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl object-cover shrink-0"
                     />
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-mono text-xs font-bold text-slate-400">
                           {b.bookingCode}
                         </span>
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${badge.className}`}>
                           {badge.label}
                         </span>
+                        {(b.status === "WAITING_PAYMENT" || b.status === "WAITING_DP_PAYMENT") && b.paymentDeadline && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                            <Clock className="w-3 h-3 text-amber-600" />
+                            <span>Batas 45 Menit</span>
+                          </span>
+                        )}
                       </div>
                       <h3 className="font-bold text-sm sm:text-base text-slate-900 leading-snug">
                         {b.package.name}
@@ -188,13 +195,27 @@ export default function CustomerBookingsPage() {
                           </Link>
                         )
                       ) : (
-                        <Link
-                          href={`/customer/bookings/${b.id}`}
-                          className="px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-emerald-600 text-white text-xs font-bold transition-colors flex items-center gap-1"
-                        >
-                          <span>{b.status === "WAITING_PAYMENT" || b.status === "PENDING" ? "Detail & Bayar" : "Detail"}</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </Link>
+                        (() => {
+                          const isWaitingPayment =
+                            b.status === "WAITING_PAYMENT" ||
+                            b.status === "WAITING_DP_PAYMENT" ||
+                            b.status === "NEEDS_PELUNASAN" ||
+                            b.status === "PENDING" ||
+                            b.status === "UNPAID";
+                          return (
+                            <Link
+                              href={`/customer/bookings/${b.id}`}
+                              className={`px-4 py-1.5 rounded-xl text-white text-xs font-bold transition-colors flex items-center gap-1 ${
+                                isWaitingPayment
+                                  ? "bg-emerald-600 hover:bg-emerald-700 shadow-xs"
+                                  : "bg-slate-900 hover:bg-emerald-600"
+                              }`}
+                            >
+                              <span>{isWaitingPayment ? "Detail & Bayar" : "Detail"}</span>
+                              <ArrowRight className="w-3.5 h-3.5" />
+                            </Link>
+                          );
+                        })()
                       )}
                     </div>
                   </div>
@@ -205,16 +226,34 @@ export default function CustomerBookingsPage() {
         ) : (
           <div className="p-12 text-center bg-white rounded-2xl border border-slate-200">
             <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <h3 className="text-base font-bold text-slate-800">Belum Ada Pemesanan</h3>
+            <h3 className="text-base font-bold text-slate-800">
+              {statusFilter === "ALL" ? "Belum Ada Pemesanan" : "Tidak Ada Pemesanan"}
+            </h3>
             <p className="text-xs text-slate-500 mt-1">
-              Anda belum melakukan booking perjalanan wisata.
+              {statusFilter === "ALL"
+                ? "Anda belum melakukan booking perjalanan wisata."
+                : `Tidak ada pemesanan dengan status "${
+                    statusFilter === "WAITING_PAYMENT" ? "Menunggu Bayar" :
+                    statusFilter === "WAITING_VERIFICATION" ? "Menunggu Verifikasi" :
+                    statusFilter === "CONFIRMED" ? "Terkonfirmasi" :
+                    statusFilter === "COMPLETED" ? "Selesai" : "Dibatalkan"
+                  }".`}
             </p>
-            <Link
-              href="/explore"
-              className="mt-4 inline-block px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl"
-            >
-              Jelajahi Paket Wisata
-            </Link>
+            {statusFilter !== "ALL" ? (
+              <button
+                onClick={() => setStatusFilter("ALL")}
+                className="mt-4 inline-block px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
+              >
+                Tampilkan Semua Status
+              </button>
+            ) : (
+              <Link
+                href="/explore"
+                className="mt-4 inline-block px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all"
+              >
+                Jelajahi Paket Wisata
+              </Link>
+            )}
           </div>
         )}
 

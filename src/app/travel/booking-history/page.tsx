@@ -31,7 +31,13 @@ function BookingStatusBadge({ status }: { status: string }) {
     CONFIRMED: { label: "Terkonfirmasi", cls: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: <CheckCircle2 className="w-3 h-3" /> },
     COMPLETED: { label: "Selesai", cls: "bg-blue-50 text-blue-700 border-blue-200", icon: <Star className="w-3 h-3" /> },
     PENDING: { label: "Menunggu", cls: "bg-amber-50 text-amber-700 border-amber-200", icon: <Clock className="w-3 h-3" /> },
+    WAITING_PAYMENT: { label: "Menunggu Bayar", cls: "bg-amber-50 text-amber-700 border-amber-200", icon: <Clock className="w-3 h-3" /> },
+    WAITING_DP_PAYMENT: { label: "Menunggu DP", cls: "bg-amber-50 text-amber-700 border-amber-200", icon: <Clock className="w-3 h-3" /> },
+    WAITING_VERIFICATION: { label: "Menunggu Verifikasi", cls: "bg-amber-50 text-amber-700 border-amber-200", icon: <Clock className="w-3 h-3" /> },
+    NEEDS_PELUNASAN: { label: "Menunggu Pelunasan", cls: "bg-amber-50 text-amber-700 border-amber-200", icon: <Clock className="w-3 h-3" /> },
+    DP_PAID: { label: "DP Terverifikasi", cls: "bg-teal-50 text-teal-700 border-teal-200", icon: <CheckCircle2 className="w-3 h-3" /> },
     CANCELLED: { label: "Dibatalkan", cls: "bg-red-50 text-red-700 border-red-200", icon: <XCircle className="w-3 h-3" /> },
+    REJECTED: { label: "Ditolak", cls: "bg-red-50 text-red-700 border-red-200", icon: <XCircle className="w-3 h-3" /> },
   };
   const b = map[status] ?? { label: status, cls: "bg-slate-50 text-slate-600 border-slate-200", icon: null };
   return (

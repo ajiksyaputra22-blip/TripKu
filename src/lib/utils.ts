@@ -69,6 +69,8 @@ export function getStatusBadge(status: string) {
         className: "bg-emerald-50 text-emerald-700 border-emerald-200",
       };
     case "WAITING_PAYMENT":
+    case "WAITING_DP_PAYMENT":
+    case "NEEDS_PELUNASAN":
     case "PENDING":
     case "WAITING_VERIFICATION":
     case "PROPOSED":
@@ -76,11 +78,18 @@ export function getStatusBadge(status: string) {
     case "UNPAID":
       return {
         label: status === "WAITING_PAYMENT" ? "Menunggu Bayar" :
+               status === "WAITING_DP_PAYMENT" ? "Menunggu Bayar (DP)" :
+               status === "NEEDS_PELUNASAN" ? "Menunggu Pelunasan" :
                status === "WAITING_VERIFICATION" ? "Menunggu Verifikasi" :
                status === "PROPOSED" ? "Ditawarkan" :
                status === "SCHEDULED" ? "Terjadwal" :
                status === "UNPAID" ? "Belum Dibayar" : "Pending",
         className: "bg-amber-50 text-amber-700 border-amber-200",
+      };
+    case "DP_PAID":
+      return {
+        label: "DP Terverifikasi",
+        className: "bg-teal-50 text-teal-700 border-teal-200",
       };
     case "ONGOING":
     case "IN_PROGRESS":
@@ -103,6 +112,19 @@ export function getStatusBadge(status: string) {
       };
   }
 }
+
+/**
+ * Status booking yang sah dihitung sebagai "Terpesan" karena pembayaran sudah di-acc/diverifikasi oleh pihak travel
+ * (TIDAK termasuk WAITING_PAYMENT, WAITING_DP_PAYMENT, WAITING_VERIFICATION, CANCELLED, REJECTED)
+ */
+export const VERIFIED_BOOKING_STATUSES = [
+  "CONFIRMED",
+  "PAID",
+  "ACTIVE",
+  "COMPLETED",
+  "NEEDS_PELUNASAN", // DP telah di-acc/diverifikasi oleh travel
+  "DP_PAID",
+] as const;
 
 export function formatWhatsAppUrl(phone: string | null | undefined, text?: string): string {
   if (!phone) return "#";

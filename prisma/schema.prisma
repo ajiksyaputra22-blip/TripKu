@@ -161,6 +161,8 @@ model Booking {
   dpPaid           Boolean       @default(false)
   notes            String?
   selectedDate     DateTime?     // Tanggal mulai dipilih customer (PRIVATE TRIP)
+  paymentStartedAt DateTime?     // Waktu mulai pembayaran (saat customer klik Konfirmasi & Lanjut Pembayaran)
+  paymentDeadline  DateTime?     // Batas waktu pembayaran (paymentStartedAt + 45 menit)
   status           String        @default("WAITING_PAYMENT")
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
@@ -191,8 +193,9 @@ model Payment {
   paymentType      String   @default("FULL")
   proofUrl         String?
   status           String   @default("PENDING")
-  verificationNote String?
-  createdAt        DateTime @default(now())
+  verificationNote   String?
+  waNotificationSent Boolean  @default(false)
+  createdAt          DateTime @default(now())
   updatedAt        DateTime @updatedAt
   booking          Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 }

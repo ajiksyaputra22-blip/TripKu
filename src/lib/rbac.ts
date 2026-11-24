@@ -36,6 +36,7 @@ export function isAuthorizedRoute(pathname: string, user: SessionPayload | null)
   if (
     pathname.startsWith("/api/public") ||
     pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/cron") ||
     pathname.startsWith("/api/upload")
   ) {
     return { allowed: true };

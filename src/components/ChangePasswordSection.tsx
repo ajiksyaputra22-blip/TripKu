@@ -129,9 +129,6 @@ export default function ChangePasswordSection({ onSuccess }: ChangePasswordSecti
             <Lock className="w-5 h-5 text-emerald-600" />
             <span>Ubah Kata Sandi Akun</span>
           </h2>
-          <p className="text-xs text-slate-500 mt-1">
-            Jaga keamanan akun Anda. Pengubahan kata sandi dibatasi maksimal <strong>2 bulan sekali</strong>.
-          </p>
         </div>
 
         {lastChangedAt && (

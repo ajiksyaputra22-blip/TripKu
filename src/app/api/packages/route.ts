@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { VERIFIED_BOOKING_STATUSES } from "@/lib/utils";
 
 export async function GET(request: Request) {
   try {
@@ -178,7 +179,7 @@ export async function GET(request: Request) {
         },
         bookings: {
           where: {
-            status: { not: "CANCELLED" },
+            status: { in: [...VERIFIED_BOOKING_STATUSES] },
           },
           select: {
             id: true,

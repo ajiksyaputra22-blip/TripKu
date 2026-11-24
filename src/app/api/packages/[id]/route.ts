@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { VERIFIED_BOOKING_STATUSES } from "@/lib/utils";
 
 export async function GET(
   request: Request,
@@ -63,7 +64,7 @@ export async function GET(
         },
         bookings: {
           where: {
-            status: { notIn: ["WAITING_PAYMENT", "WAITING_DP_PAYMENT"] },
+            status: { in: [...VERIFIED_BOOKING_STATUSES] },
           },
           include: {
             customer: { select: { id: true, name: true, email: true, phone: true, nik: true } },
@@ -139,11 +140,11 @@ export async function GET(
       ? parseFloat((allAgencyReviews.reduce((sum, r) => sum + r.rating, 0) / allAgencyReviews.length).toFixed(1))
       : null;
 
-    // REQ: Total keseluruhan orang yang memesan paket wisata ini (kumulatif seluruh batch)
+    // REQ: Total keseluruhan orang yang memesan paket wisata ini (hanya yang sudah di-acc verifikasi pembayaran)
     const packageBookings = await prisma.booking.findMany({
       where: {
         packageId: pkg.id,
-        status: { not: "CANCELLED" },
+        status: { in: [...VERIFIED_BOOKING_STATUSES] },
       },
       select: {
         participantCount: true,

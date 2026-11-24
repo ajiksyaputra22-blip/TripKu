@@ -16,7 +16,8 @@ import {
   Copy,
   Check,
   ImageIcon,
-  X
+  X,
+  AlertTriangle
 } from "lucide-react";
 import { useToast } from "@/components/Toast";
 
@@ -37,6 +38,10 @@ export default function CustomerBookingDetailPage() {
   const [fileError, setFileError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Countdown timer state (45 menit batas pembayaran)
+  const [timeLeft, setTimeLeft] = useState<{ minutes: number; seconds: number; totalSeconds: number } | null>(null);
+  const [isExpired, setIsExpired] = useState(false);
 
   // Review modal state
   const [reviewOpen, setReviewOpen] = useState(false);
@@ -60,6 +65,41 @@ export default function CustomerBookingDetailPage() {
   useEffect(() => {
     fetchBooking();
   }, [bookingId]);
+
+  // Efek countdown timer 45 menit untuk pembayaran
+  useEffect(() => {
+    if (!booking?.paymentDeadline) return;
+
+    const isWaiting = booking.status === "WAITING_PAYMENT" || booking.status === "WAITING_DP_PAYMENT";
+    if (!isWaiting) {
+      setTimeLeft(null);
+      return;
+    }
+
+    const calculateTime = () => {
+      const now = Date.now();
+      const deadline = new Date(booking.paymentDeadline).getTime();
+      const diff = Math.max(0, Math.floor((deadline - now) / 1000));
+
+      if (diff <= 0) {
+        setTimeLeft({ minutes: 0, seconds: 0, totalSeconds: 0 });
+        setIsExpired(true);
+        if (booking.status !== "CANCELLED") {
+          fetchBooking();
+        }
+        return;
+      }
+
+      const m = Math.floor(diff / 60);
+      const s = diff % 60;
+      setTimeLeft({ minutes: m, seconds: s, totalSeconds: diff });
+      setIsExpired(false);
+    };
+
+    calculateTime();
+    const interval = setInterval(calculateTime, 1000);
+    return () => clearInterval(interval);
+  }, [booking?.paymentDeadline, booking?.status]);
 
   const handleCopyAccount = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -117,7 +157,13 @@ export default function CustomerBookingDetailPage() {
         body: formData,
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) {
+        if (data.isExpired) {
+          setIsExpired(true);
+          fetchBooking();
+        }
+        throw new Error(data.error);
+      }
 
       const label = isDP ? "DP" : paymentType === "PELUNASAN" ? "Pelunasan" : "Pembayaran";
       toast.success(`Foto bukti ${label} berhasil diunggah! Pihak travel akan segera memverifikasi transaksi Anda.`);
@@ -191,7 +237,14 @@ export default function CustomerBookingDetailPage() {
   const pelunasanAmount = booking.totalPrice - dpAmount;
   const needsDP = booking.status === "WAITING_DP_PAYMENT" || (hasDP && !dpPayment);
   const needsPelunasan = booking.status === "NEEDS_PELUNASAN" || (hasDP && dpPayment?.status === "VERIFIED" && !pelunasanPayment);
-  const showPaymentForm = booking.status === "WAITING_PAYMENT" || booking.status === "WAITING_DP_PAYMENT" || booking.status === "NEEDS_PELUNASAN" || pelunasanPayment?.status === "REJECTED" || dpPayment?.status === "REJECTED";
+  const isCancelled = booking.status === "CANCELLED" || isExpired;
+  const showPaymentForm =
+    !isCancelled &&
+    (booking.status === "WAITING_PAYMENT" ||
+      booking.status === "WAITING_DP_PAYMENT" ||
+      booking.status === "NEEDS_PELUNASAN" ||
+      pelunasanPayment?.status === "REJECTED" ||
+      dpPayment?.status === "REJECTED");
 
   // Rincian Pembayaran (menggunakan snapshot harga yang tersimpan di booking)
   const packagePrice = booking.pricePerPerson ?? booking.package?.price ?? 0;
@@ -223,6 +276,67 @@ export default function CustomerBookingDetailPage() {
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Kembali ke Riwayat Pemesanan</span>
         </Link>
+
+        {/* Banner Batas Waktu Pembayaran (45 Menit) / Status Dibatalkan */}
+        {isCancelled ? (
+          <div className="p-4 sm:p-5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs animate-in fade-in">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center shrink-0 text-rose-600">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-rose-900">Batas Waktu Pembayaran Telah Berakhir</h3>
+                <p className="text-xs text-rose-700 mt-0.5">
+                  Pemesanan ini telah dibatalkan secara otomatis karena melewati batas waktu pembayaran 45 menit. Silakan lakukan pemesanan ulang jika Anda masih berminat mengikuti perjalanan ini.
+                </p>
+              </div>
+            </div>
+            <Link
+              href={`/packages/${booking.package.id}/book`}
+              className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shrink-0 transition-colors shadow-xs"
+            >
+              Pesan Ulang Paket
+            </Link>
+          </div>
+        ) : timeLeft !== null && (booking.status === "WAITING_PAYMENT" || booking.status === "WAITING_DP_PAYMENT") ? (
+          <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/90 border border-amber-200 text-amber-950 mb-6 shadow-xs animate-in fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0 text-amber-700">
+                  <Clock className="w-5 h-5 animate-pulse" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-amber-800">
+                      Batas Waktu Pembayaran
+                    </span>
+                  </div>
+                  <p className="text-xs text-amber-800 mt-1">
+                    Selesaikan pembayaran dan unggah bukti pembayaran sebelum waktu berakhir. Jika waktu habis, pesanan akan otomatis dibatalkan oleh sistem.
+                  </p>
+                </div>
+              </div>
+
+              {/* Countdown Digits */}
+              <div className="flex items-center gap-2 bg-white px-4 py-2.5 rounded-2xl border border-amber-200 shadow-2xs self-start sm:self-auto shrink-0">
+                <div className="text-center">
+                  <span className="block text-[10px] font-bold text-amber-600 uppercase">Sisa Waktu</span>
+                  <span className="font-mono text-2xl sm:text-3xl font-black text-amber-900 tracking-wider">
+                    {String(timeLeft.minutes).padStart(2, "0")}:{String(timeLeft.seconds).padStart(2, "0")}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="mt-3 w-full bg-amber-200/60 rounded-full h-1.5 overflow-hidden">
+              <div
+                className="bg-amber-600 h-full rounded-full transition-all duration-1000 ease-linear"
+                style={{ width: `${Math.min(100, Math.max(0, (timeLeft.totalSeconds / (45 * 60)) * 100))}%` }}
+              />
+            </div>
+          </div>
+        ) : null}
 
         {/* Top Header Card */}
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -346,8 +460,8 @@ export default function CustomerBookingDetailPage() {
                       {booking.selectedDate
                         ? formatDate(booking.selectedDate)
                         : booking.package.departureDate
-                        ? formatDate(booking.package.departureDate)
-                        : "-"}
+                          ? formatDate(booking.package.departureDate)
+                          : "-"}
                     </span>
                   </div>
                   <div>Durasi: <span className="font-medium text-slate-800">{booking.package.durationDays} Hari</span></div>
@@ -453,12 +567,6 @@ export default function CustomerBookingDetailPage() {
                   <Clock className="w-4 h-4 text-amber-700 shrink-0" />
                   <span>Ketentuan Pelunasan (Wajib H-2)</span>
                 </div>
-                <p className="text-[11px] text-amber-800 leading-relaxed">
-                  Sesuai pilihan skema DP, sisa tagihan <strong>{formatRupiah(pelunasanAmount)}</strong> wajib dilunasi paling lambat <strong>H-2 sebelum tanggal keberangkatan</strong>{booking.package.departureDate && ` (${formatDate(new Date(new Date(booking.package.departureDate).getTime() - 2 * 24 * 60 * 60 * 1000))})`}.
-                </p>
-                <div className="text-[10px] text-amber-700 bg-white/70 p-2 rounded-lg border border-amber-200/60 mt-1">
-                  Sistem agensi travel tetap memproses verifikasi DP dan mempersiapkan kru (Driver &amp; Guide) untuk perjalanan Anda.
-                </div>
               </div>
             )}
 
@@ -536,17 +644,28 @@ export default function CustomerBookingDetailPage() {
               </div>
             )}
 
-            {/* Upload Proof Form */}
-            {showPaymentForm && (
+            {/* Upload Proof Form / Expired Notice */}
+            {isCancelled ? (
+              <div className="mt-3 pt-4 border-t border-slate-100">
+                <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-center space-y-2">
+                  <AlertCircle className="w-6 h-6 text-rose-600 mx-auto" />
+                  <h4 className="text-xs font-bold text-rose-900">Pembayaran Tidak Tersedia</h4>
+                  <p className="text-[11px] text-rose-700">
+                    Batas waktu pembayaran 45 menit telah berakhir atau pemesanan ini telah dibatalkan. Anda tidak dapat lagi mengunggah bukti transfer untuk pesanan ini.
+                  </p>
+                  <Link
+                    href={`/packages/${booking.package.id}/book`}
+                    className="inline-block mt-2 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-colors shadow-xs"
+                  >
+                    Pesan Ulang Paket Ini
+                  </Link>
+                </div>
+              </div>
+            ) : showPaymentForm && (
               <form onSubmit={(e) => handleUploadProof(e, needsDP ? "DP" : needsPelunasan ? "PELUNASAN" : "FULL")} className="mt-3 pt-4 border-t border-slate-100 space-y-4">
                 <h4 className="text-xs font-bold text-slate-900">
                   {needsDP ? `Kirim Bukti DP (${formatRupiah(dpAmount)})` : needsPelunasan ? `Kirim Bukti Pelunasan (${formatRupiah(pelunasanAmount)})` : "Kirim Bukti Pembayaran"}
                 </h4>
-                {needsDP && (
-                  <div className="p-2 rounded-lg bg-blue-50 border border-blue-200 text-[11px] text-blue-800">
-                    Bayar DP sebesar <strong>{formatRupiah(dpAmount)}</strong> sekarang. Pelunasan <strong>{formatRupiah(pelunasanAmount)}</strong> dibayar H-2 sebelum keberangkatan.
-                  </div>
-                )}
 
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-700 mb-1">Metode Transfer</label>

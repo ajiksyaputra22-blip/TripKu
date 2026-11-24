@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { verifySessionToken, COOKIE_NAME } from "@/lib/jwt";
 import prisma from "@/lib/prisma";
+import { VERIFIED_BOOKING_STATUSES } from "@/lib/utils";
 import PackageCard, { PackageData } from "@/components/PackageCard";
 import {
   Search,
@@ -41,7 +42,7 @@ async function getFeaturedPackages(): Promise<PackageData[]> {
         },
         bookings: {
           where: {
-            status: { not: "CANCELLED" },
+            status: { in: [...VERIFIED_BOOKING_STATUSES] },
           },
           select: {
             participantCount: true,
@@ -180,22 +181,6 @@ export default async function HomePage() {
                 </button>
               </div>
             </form>
-          </div>
-
-          {/* Key Value Props Pill */}
-          <div className="mt-8 flex flex-wrap items-center gap-4 sm:gap-8 text-xs sm:text-sm text-slate-10 font-medium">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span>Multi-Vendor Resmi Terverifikasi</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span>Trip Room Koordinasi Langsung</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span>Pemandu & Driver Khusus Perjalanan</span>
-            </div>
           </div>
         </div>
       </section>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { isBookingExpired, checkAndCancelSingleBooking } from "@/lib/booking-expiration";
 
 export async function GET(
   request: Request,
@@ -14,7 +15,7 @@ export async function GET(
 
     const { id } = await params;
 
-    const booking = await prisma.booking.findFirst({
+    let booking = await prisma.booking.findFirst({
       where: {
         OR: [{ id }, { bookingCode: id }],
       },
@@ -68,6 +69,12 @@ export async function GET(
 
     if (!booking) {
       return NextResponse.json({ error: "Booking tidak ditemukan." }, { status: 404 });
+    }
+
+    // Periksa apakah batas waktu pembayaran 45 menit telah berakhir
+    if (isBookingExpired(booking)) {
+      await checkAndCancelSingleBooking(booking.id);
+      booking.status = "CANCELLED";
     }
 
     // Permission check

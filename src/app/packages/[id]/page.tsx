@@ -1,7 +1,7 @@
 import Link from "next/link";
 import prisma from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import { formatRupiah, formatDate } from "@/lib/utils";
+import { formatRupiah, formatDate, VERIFIED_BOOKING_STATUSES } from "@/lib/utils";
 import { getSession } from "@/lib/auth";
 import {
   MapPin,
@@ -72,14 +72,17 @@ export default async function PackageDetailPage({ params }: PageProps) {
     ? (agencyReviews.reduce((acc, r) => acc + r.rating, 0) / agencyReviews.length)
     : 5.0;
   const agencyTotalBookings = await prisma.booking.count({
-    where: { package: { travelId: pkg.travelId } },
+    where: {
+      package: { travelId: pkg.travelId },
+      status: { in: [...VERIFIED_BOOKING_STATUSES] },
+    },
   });
 
-  // Total keseluruhan orang yang memesan trip ini (kumulatif seluruh batch/riwayat)
+  // Total keseluruhan orang yang memesan trip ini (hanya yang sudah di-acc verifikasi pembayaran)
   const packageBookings = await prisma.booking.findMany({
     where: {
       packageId: pkg.id,
-      status: { not: "CANCELLED" },
+      status: { in: [...VERIFIED_BOOKING_STATUSES] },
     },
     select: {
       participantCount: true,
